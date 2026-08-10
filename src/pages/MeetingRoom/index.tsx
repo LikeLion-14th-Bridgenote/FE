@@ -117,7 +117,7 @@ export default function MeetingRoom() {
   const notedLines = subtitles.filter((l) => l.note);
 
   return (
-    <div className="min-h-screen bg-[#EDECE9] flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col">
       {/* 회의 자체 헤더 */}
       <header className="flex items-center justify-between px-6 h-16 bg-white border-b border-gray-100">
         <div>
