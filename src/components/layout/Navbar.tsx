@@ -11,7 +11,7 @@ export default function Navbar() {
   return (
     <header className="flex items-center justify-between h-16 px-6 border-b border-gray-100 bg-white/90 backdrop-blur-sm sticky top-0 z-10">
       <NavLink to="/dashboard" className="flex items-center transition-transform hover:scale-[1.03]">
-        <img src={logo} alt="Bridgenote" className="h-12 w-auto" />
+        <img src={logo} alt="Bridgenote" className="h-13 w-auto" />
       </NavLink>
 
       <nav className="flex items-center gap-7">
