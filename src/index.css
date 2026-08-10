@@ -1,7 +1,31 @@
+@font-face {
+  font-family: "YuhanKimberlyPureunsoop";
+  src: url("https://cdn.jsdelivr.net/gh/Project-Noonnu/2607101517@font-2/font-2/font-2-300.woff2") format("woff2");
+  font-weight: 300;
+  font-display: swap;
+}
+@font-face {
+  font-family: "YuhanKimberlyPureunsoop";
+  src: url("https://cdn.jsdelivr.net/gh/Project-Noonnu/2607101517@font-2/font-2/font-2-500.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: "YuhanKimberlyPureunsoop";
+  src: url("https://cdn.jsdelivr.net/gh/Project-Noonnu/2607101517@font-2/font-2/font-2-700.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+
 @import "tailwindcss";
 
 @theme {
   --color-primary: #2C6C60;
   --color-secondary: #FFFFFF;
   --color-accent: #E2795F;
+  --font-sans: "YuhanKimberlyPureunsoop", "Noto Sans KR", sans-serif;
+}
+
+body {
+  font-family: var(--font-sans);
 }
