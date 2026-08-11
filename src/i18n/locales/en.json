@@ -3,5 +3,21 @@
   "nav.minutes": "Minutes",
   "nav.mypage": "My Page",
   "common.login": "Log in",
-  "common.signup": "Sign up"
+  "common.signup": "Sign up",
+  "auth.email": "Email",
+  "auth.password": "Password",
+  "auth.retryPassword": "Please try again",
+  "auth.noAccount": "Don't have an account?",
+  "auth.hasAccount": "Already have an account?",
+  "auth.nickname": "Nickname",
+  "auth.selectInfo": "Please select the basic info you'll use in meetings.",
+  "auth.motherTongue": "Native language",
+  "auth.motherTongueDesc": "Default language for subtitles and meeting notes",
+  "auth.job": "Occupation",
+  "auth.culture": "Cultural background",
+  "auth.cultureDesc": "Basis for interpreting cultural notes",
+  "auth.org": "Organization",
+  "auth.orgDesc": "The company or organization you currently work at",
+  "auth.select": "Select",
+  "auth.backHome": "← Back home"
 }

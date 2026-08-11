@@ -3,5 +3,21 @@
   "nav.minutes": "회의록",
   "nav.mypage": "마이페이지",
   "common.login": "로그인",
-  "common.signup": "회원가입"
+  "common.signup": "회원가입",
+  "auth.email": "이메일",
+  "auth.password": "비밀번호",
+  "auth.retryPassword": "다시 입력해주세요",
+  "auth.noAccount": "계정이 없나요?",
+  "auth.hasAccount": "이미 계정이 있나요?",
+  "auth.nickname": "닉네임",
+  "auth.selectInfo": "회의에 사용할 기본 정보를 선택해주세요.",
+  "auth.motherTongue": "모국어",
+  "auth.motherTongueDesc": "자막 및 회의록을 받을 기본 언어",
+  "auth.job": "직업",
+  "auth.culture": "문화권",
+  "auth.cultureDesc": "문화 각주 해석의 기준",
+  "auth.org": "기관",
+  "auth.orgDesc": "현재 근무하고 계시는 회사 및 기관",
+  "auth.select": "선택",
+  "auth.backHome": "← 홈으로"
 }

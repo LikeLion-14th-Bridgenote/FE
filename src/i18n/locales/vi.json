@@ -3,5 +3,22 @@
   "nav.minutes": "Biên bản",
   "nav.mypage": "Trang cá nhân",
   "common.login": "Đăng nhập",
-  "common.signup": "Đăng ký"
+  "common.signup": "Đăng ký",
+  "auth.email": "Email",
+  "auth.password": "Mật khẩu",
+  "auth.retryPassword": "Vui lòng nhập lại",
+  "auth.noAccount": "Chưa có tài khoản?",
+  "auth.hasAccount": "Đã có tài khoản?",
+  "auth.nickname": "Biệt danh",
+  "auth.selectInfo": "Vui lòng chọn thông tin cơ bản sẽ dùng trong cuộc họp.",
+  "auth.motherTongue": "Tiếng mẹ đẻ",
+  "auth.motherTongueDesc": "Ngôn ngữ mặc định cho phụ đề và biên bản họp",
+  "auth.job": "Nghề nghiệp",
+  "auth.culture": "Nền văn hóa",
+  "auth.cultureDesc": "Cơ sở để diễn giải chú thích văn hóa",
+  "auth.org": "Tổ chức",
+  "auth.orgDesc": "Công ty hoặc tổ chức bạn đang làm việc",
+  "auth.select": "Chọn",
+  "auth.backHome": "← Về trang chủ"
+  
 }

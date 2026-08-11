@@ -1,13 +1,12 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import { t } from "../../i18n";
+import { useLangStore } from "../../stores/langStore";
 import logo from "../../assets/logo_2.png";
 import globe from "../../assets/globe.png";
 import magnifier from "../../assets/magnifier.png";
 
 // 담당: 주연
-
-type Lang = "ko" | "en" | "vi";
 
 const GLOBE_TAGS: { label: string; top: string; left: string; align: "left" | "right" }[] = [
   { label: "한국어", top: "20%", left: "74%", align: "left" },
@@ -32,7 +31,7 @@ function FocusMarker() {
 }
 
 export default function Home() {
-  const [lang, setLang] = useState<Lang>("ko");
+  const { lang, setLang } = useLangStore();
   const [langOpen, setLangOpen] = useState(false);
 
   return (
