@@ -1,14 +1,24 @@
 import api from "./axiosInstance";
 
 // BE 담당: 전진수 (/api/meetings/...)
-// DTO 네이밍: 엔티티명 + 행위(CRUD/Get) + 형태(Req/Res) + Dto (BE README 기준)
 export const meetingApi = {
-  create: (data: { title?: string; description?: string; expectedCount?: number }) =>
+  create: (data: { title?: string; description?: string; expected_count?: number }) =>
     api.post("/api/meetings", data),
+
+  getList: () => api.get("/api/meetings"),
+
   get: (meetingId: string) => api.get(`/api/meetings/${meetingId}`),
-  join: (meetingId: string) => api.post(`/api/meetings/${meetingId}/join`),
-  consent: (meetingId: string) => api.post(`/api/meetings/${meetingId}/consent`),
+
+  join: (meetingId: string, inviteCode: string) =>
+    api.post(`/api/meetings/${meetingId}/join`, { invite_code: inviteCode }),
+
+  consent: (meetingId: string, agreed: boolean) =>
+    api.post(`/api/meetings/${meetingId}/consent`, { agreed }),
+
   end: (meetingId: string) => api.post(`/api/meetings/${meetingId}/end`),
-  getMinutes: (meetingId: string) => api.get(`/api/meetings/${meetingId}/minutes`),
-  getArchive: () => api.get("/api/meetings"),
+
+  getMinutes: (meetingId: string, params?: { language?: string; job_role?: string }) =>
+    api.get(`/api/meetings/${meetingId}/minutes`, { params }),
+
+  getUtterances: (meetingId: string) => api.get(`/api/meetings/${meetingId}/utterances`),
 };
