@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useAuthStore } from "../../stores/authStore";
 
 // 로그인 / 백엔드 연동 전까지 true
 const USE_DEV_DATA = true;
@@ -297,14 +298,6 @@ const DEV_UTTERANCES: Utterance[] = [
   },
 ];
 
-function getAccessToken() {
-  return (
-    localStorage.getItem("access_token") ||
-    localStorage.getItem("accessToken") ||
-    localStorage.getItem("token") ||
-    ""
-  );
-}
 
 function formatDate(dateString?: string) {
   if (!dateString) return "-";
@@ -352,6 +345,7 @@ function getMeetingDuration(startedAt?: string, endedAt?: string) {
 export default function MeetingMinutes() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const accessToken = useAuthStore((state) => state.accessToken);
 
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [minutes, setMinutes] = useState<MinutesItem[]>([]);
@@ -389,9 +383,7 @@ export default function MeetingMinutes() {
           throw new Error("회의 ID가 없습니다.");
         }
 
-        const token = getAccessToken();
-
-        if (!token) {
+        if (!accessToken) {
           throw new Error("로그인 정보가 없습니다. 다시 로그인해주세요.");
         }
 
@@ -399,14 +391,14 @@ export default function MeetingMinutes() {
           fetch(`/api/meetings/${id}`, {
             method: "GET",
             headers: {
-              Authorization: `Bearer ${token}`,
+              Authorization: `Bearer ${accessToken}`,
               Accept: "application/json",
             },
           }),
           fetch(`/api/meetings/${id}/utterances`, {
             method: "GET",
             headers: {
-              Authorization: `Bearer ${token}`,
+              Authorization: `Bearer ${accessToken}`,
               Accept: "application/json",
             },
           }),
@@ -449,7 +441,7 @@ export default function MeetingMinutes() {
     };
 
     loadMeeting();
-  }, [id]);
+  }, [id, accessToken]);
 
   // 언어 변경 시 해당 언어의 회의록 조회
   useEffect(() => {
@@ -467,9 +459,7 @@ export default function MeetingMinutes() {
           return;
         }
 
-        const token = getAccessToken();
-
-        if (!token) {
+        if (!accessToken) {
           setMinutes([]);
           return;
         }
@@ -479,7 +469,7 @@ export default function MeetingMinutes() {
           {
             method: "GET",
             headers: {
-              Authorization: `Bearer ${token}`,
+              Authorization: `Bearer ${accessToken}`,
               Accept: "application/json",
             },
           }
@@ -506,7 +496,7 @@ export default function MeetingMinutes() {
     };
 
     loadMinutes();
-  }, [id, language]);
+  }, [id, language, accessToken]);
 
   const baseMinutes = useMemo(() => {
     return (
@@ -556,9 +546,9 @@ export default function MeetingMinutes() {
 
   if (loading) {
     return (
-      <main className="min-h-[calc(100vh-72px)] bg-[#F7F9FA] px-6 py-10">
+      <main className="min-h-[calc(100vh-72px)] bg-[#EDECE6] px-6 py-10">
         <div className="mx-auto max-w-[1200px] rounded-2xl border border-[#E2E8F0] bg-white py-24 text-center">
-          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-[#DCE9E7] border-t-[#5F94A8]" />
+          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-[#EDECE6] border-t-[#2C7B98]" />
           <p className="text-sm text-[#64748B]">
             상세 회의록을 불러오는 중입니다.
           </p>
@@ -569,9 +559,9 @@ export default function MeetingMinutes() {
 
   if (error) {
     return (
-      <main className="min-h-[calc(100vh-72px)] bg-[#F7F9FA] px-6 py-10">
+      <main className="min-h-[calc(100vh-72px)] bg-[#EDECE6] px-6 py-10">
         <div className="mx-auto max-w-[1200px] rounded-2xl border border-[#E2E8F0] bg-white py-20 text-center">
-          <p className="text-sm text-[#EC7A6B]">{error}</p>
+          <p className="text-sm text-[#E2795F]">{error}</p>
 
           <button
             type="button"
@@ -589,10 +579,7 @@ export default function MeetingMinutes() {
 
   return (
     <main
-      className="min-h-[calc(100vh-72px)] bg-[#F7F9FA] px-6 py-8 text-[#172033] lg:px-10"
-      style={{
-        fontFamily: '"Noto Sans Display", "Noto Sans KR", sans-serif',
-      }}
+      className="min-h-[calc(100vh-72px)] bg-[#EDECE6] px-6 py-8 text-[#172033] lg:px-10"
     >
       <div className="mx-auto max-w-[1200px]">
         {/* 회의 정보 */}
@@ -602,7 +589,7 @@ export default function MeetingMinutes() {
               <button
                 type="button"
                 onClick={() => navigate("/archive")}
-                className="mb-4 text-sm text-[#64748B] transition hover:text-[#5F94A8]"
+                className="mb-4 text-sm text-[#64748B] transition hover:text-[#2C7B98]"
               >
                 ← 회의록 목록
               </button>
@@ -631,7 +618,7 @@ export default function MeetingMinutes() {
                   setLanguage(e.target.value as Language);
                   setTranscriptPage(1);
                 }}
-                className="h-10 rounded-lg border border-[#D8DEE3] bg-white px-3 text-sm outline-none focus:border-[#5F94A8]"
+                className="h-10 rounded-lg border border-[#D8DEE3] bg-white px-3 text-sm outline-none focus:border-[#2C7B98]"
               >
                 {LANGUAGES.map((item) => (
                   <option key={item.value} value={item.value}>
@@ -660,7 +647,7 @@ export default function MeetingMinutes() {
                 {tab.label}
 
                 {mainTab === tab.id && (
-                  <span className="absolute bottom-[-1px] left-0 h-[3px] w-full rounded-full bg-[#5F94A8]" />
+                  <span className="absolute bottom-[-1px] left-0 h-[3px] w-full rounded-full bg-[#2C7B98]" />
                 )}
               </button>
             ))}
@@ -684,7 +671,7 @@ export default function MeetingMinutes() {
                       onClick={() => setMinuteTab(tab.id)}
                       className={`min-w-[130px] rounded-lg border px-5 py-2.5 text-sm font-medium transition ${
                         minuteTab === tab.id
-                          ? "border-[#5F94A8] bg-[#5F94A8] text-white"
+                          ? "border-[#2C7B98] bg-[#2C7B98] text-white"
                           : "border-[#DCE2E8] bg-white text-[#667281]"
                       }`}
                     >
@@ -730,7 +717,7 @@ export default function MeetingMinutes() {
                     onClick={() => setJobRole(role.value)}
                     className={`min-w-[130px] rounded-lg border px-5 py-2.5 text-sm font-medium transition ${
                       jobRole === role.value
-                        ? "border-[#5F94A8] bg-[#5F94A8] text-white"
+                        ? "border-[#2C7B98] bg-[#2C7B98] text-white"
                         : "border-[#DCE2E8] bg-white text-[#667281]"
                     }`}
                   >
@@ -810,7 +797,7 @@ export default function MeetingMinutes() {
 
                         <div className="h-2 rounded-full bg-[#EDF1F3]">
                           <div
-                            className="h-2 rounded-full bg-[#5F94A8]"
+                            className="h-2 rounded-full bg-[#2C7B98]"
                             style={{
                               width: `${(count / maxCount) * 100}%`,
                             }}
@@ -829,7 +816,7 @@ export default function MeetingMinutes() {
                       key={note.id}
                       className="rounded-xl border border-[#DFE5E8] bg-white p-5"
                     >
-                      <span className="inline-flex rounded-full bg-[#EEF7FA] px-3 py-1 text-xs font-medium text-[#5F94A8]">
+                      <span className="inline-flex rounded-full bg-[#EDECE6] px-3 py-1 text-xs font-medium text-[#2C7B98]">
                         {note.category}
                       </span>
 
@@ -923,7 +910,7 @@ export default function MeetingMinutes() {
                     onClick={() => setTranscriptPage(page)}
                     className={`h-9 min-w-9 rounded-lg px-3 text-sm ${
                       transcriptPage === page
-                        ? "bg-[#5F94A8] text-white"
+                        ? "bg-[#2C7B98] text-white"
                         : "text-[#64748B]"
                     }`}
                   >
