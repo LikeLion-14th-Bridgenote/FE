@@ -1,6 +1,9 @@
+import { useState } from "react";
 import type { ReactNode } from "react";
+import { meetingApi } from "../../apis/meetingApi";
 
 interface ConsentGateProps {
+  meetingId: string;
   meetingTitle: string;
   meetingDate: string;
   isCreator: boolean;
@@ -9,11 +12,28 @@ interface ConsentGateProps {
 }
 
 export default function ConsentGate({
+  meetingId,
   meetingTitle,
   meetingDate,
   isCreator,
   onAgree,
 }: ConsentGateProps) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleAgree = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      await meetingApi.consent(meetingId, true);
+      onAgree();
+    } catch (e) {
+      setError("동의 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#EDECE6] flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-sm p-8">
@@ -24,7 +44,7 @@ export default function ConsentGate({
           {meetingTitle} - {meetingDate}
         </p>
 
-        <div className="bg-gray-50 rounded-xl p-4 mb-6">
+        <div className="bg-gray-50 rounded-xl p-4 mb-4">
           <label className="flex items-start gap-2 text-sm text-gray-700">
             <input type="checkbox" className="mt-1" defaultChecked />
             <span>
@@ -34,11 +54,14 @@ export default function ConsentGate({
           </label>
         </div>
 
+        {error && <p className="text-xs text-accent mb-4">{error}</p>}
+
         <button
-          onClick={onAgree}
-          className="w-full py-3 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 transition-opacity"
+          onClick={handleAgree}
+          disabled={loading}
+          className="w-full py-3 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
         >
-          동의하고 회의장 입장
+          {loading ? "처리 중..." : "동의하고 회의장 입장"}
         </button>
       </div>
     </div>
