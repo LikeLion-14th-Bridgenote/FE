@@ -6,7 +6,7 @@ type ConfirmModal = "logout" | "withdraw" | null;
 const SECTIONS: { id: Section; label: string }[] = [
   { id: "profile", label: "프로필" },
   { id: "language", label: "언어 설정" },
-  { id: "culture", label: "문화권·직무" },
+  { id: "culture", label: "직무 설정" },
   { id: "account", label: "계정 관리" },
 ];
 
@@ -19,7 +19,6 @@ const LANGUAGE_OPTIONS = [
 const CULTURE_OPTIONS = [
   { value: "KR", label: "대한민국" },
   { value: "VN", label: "베트남" },
-  { value: "CN", label: "중국" },
   { value: "US", label: "미국" },
 ];
 
@@ -32,7 +31,7 @@ const JOB_OPTIONS = [
 ];
 
 const inputClass =
-  "h-11 w-full rounded-lg border border-gray-200 bg-[#F8F9F7] px-3 text-sm text-gray-800 outline-none transition focus:border-primary focus:ring-3 focus:ring-primary/10 disabled:cursor-default disabled:text-gray-500";
+  "h-11 w-full rounded-lg border border-gray-200 bg-[#F1F3F2] px-3 text-sm text-gray-800 outline-none transition focus:border-primary focus:ring-3 focus:ring-primary/10 disabled:cursor-default disabled:text-gray-500";
 
 export default function MyPage() {
   const [section, setSection] = useState<Section>("profile");
@@ -44,10 +43,11 @@ export default function MyPage() {
   const [nickname, setNickname] = useState("김재웅");
   const [organization, setOrganization] = useState("LikeLion Bridgenote");
   const [language, setLanguage] = useState("ko");
-  const [captionLanguage, setCaptionLanguage] = useState("en");
+  const [preferredLanguage, setPreferredLanguage] = useState("en");
   const [minutesLanguage, setMinutesLanguage] = useState("ko");
   const [culture, setCulture] = useState("KR");
   const [jobRole, setJobRole] = useState("pm");
+  const [department, setDepartment] = useState("Product Team");
 
   const email = "jaewoong@bridgenote.team";
 
@@ -68,10 +68,10 @@ export default function MyPage() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] px-4 py-8 md:px-6 md:py-10">
-      <div className="mx-auto grid max-w-5xl gap-5 md:grid-cols-[210px_minmax(0,1fr)] md:gap-7">
-        <aside className="self-start rounded-2xl border border-gray-100 bg-white p-3 shadow-sm md:sticky md:top-24 md:p-4">
-          <h1 className="hidden px-3 pb-4 pt-1 text-lg font-bold text-gray-900 md:block">
+    <div className="min-h-[calc(100vh-4rem)] px-4 py-6 md:px-6 md:py-10">
+      <div className="mx-auto grid max-w-6xl overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm md:min-h-[640px] md:grid-cols-[190px_minmax(0,1fr)]">
+        <aside className="flex flex-col border-b border-gray-100 p-3 md:border-b-0 md:border-r md:p-5">
+          <h1 className="hidden px-3 pb-6 pt-2 text-base font-bold text-gray-900 underline decoration-primary decoration-2 underline-offset-8 md:block">
             마이페이지
           </h1>
 
@@ -82,9 +82,9 @@ export default function MyPage() {
                 type="button"
                 onClick={() => handleSectionChange(item.id)}
                 aria-current={section === item.id ? "page" : undefined}
-                className={`rounded-xl px-3 py-3 text-left text-sm transition-colors ${
+                className={`rounded-lg px-4 py-3 text-left text-sm transition-colors ${
                   section === item.id
-                    ? "bg-primary/10 font-bold text-primary"
+                    ? "bg-[#E9EFF1] font-bold text-[#315766]"
                     : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
                 }`}
               >
@@ -96,15 +96,15 @@ export default function MyPage() {
           <button
             type="button"
             onClick={() => setModal("logout")}
-            className="mt-4 hidden w-full border-t border-gray-100 px-3 pt-5 text-left text-sm text-gray-400 transition-colors hover:text-gray-700 md:block"
+            className="mt-auto hidden w-full border-t border-gray-100 px-4 pt-5 text-left text-sm text-gray-500 transition-colors hover:text-gray-800 md:block"
           >
             로그아웃
           </button>
         </aside>
 
-        <main className="min-h-[540px] rounded-2xl border border-gray-100 bg-white p-6 shadow-sm sm:p-8 md:p-10">
+        <main className="min-h-[560px] p-6 sm:p-8 md:min-h-0 md:px-14 md:py-12 lg:px-20">
           {section === "profile" && (
-            <section>
+            <section className="flex min-h-full flex-col">
               <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row">
                 <div>
                   <h2 className="text-2xl font-bold tracking-tight text-gray-900">프로필</h2>
@@ -135,7 +135,7 @@ export default function MyPage() {
               </div>
 
               <h3 className="mb-4 text-sm font-bold text-gray-800">기본 정보</h3>
-              <div className="grid gap-5 sm:grid-cols-2">
+              <div className="grid max-w-2xl gap-5 sm:grid-cols-2">
                 <label className="text-xs font-bold text-gray-700">
                   닉네임
                   <input
@@ -152,16 +152,6 @@ export default function MyPage() {
                   <span className="mt-2 block font-medium text-gray-400">
                     가입 이메일은 변경할 수 없어요.
                   </span>
-                </label>
-
-                <label className="text-xs font-bold text-gray-700">
-                  소속 조직
-                  <input
-                    value={organization}
-                    onChange={(event) => setOrganization(event.target.value)}
-                    disabled={!isEditingProfile}
-                    className={`${inputClass} mt-2`}
-                  />
                 </label>
               </div>
 
@@ -187,35 +177,32 @@ export default function MyPage() {
           )}
 
           {section === "language" && (
-            <section>
-              <div className="mb-8">
+            <section className="flex min-h-full flex-col">
+              <div className="mb-12">
                 <h2 className="text-2xl font-bold tracking-tight text-gray-900">언어 설정</h2>
                 <p className="mt-1.5 text-sm text-gray-400">
-                  자막과 회의록에 사용할 기본 언어를 선택해요.
+                  변경된 설정은 다음 회의부터 기본값으로 적용돼요.
                 </p>
               </div>
 
-              <div className="max-w-xl space-y-5">
+              <div className="max-w-xl space-y-7">
                 <SelectField
                   id="native-language"
-                  label="모국어"
-                  description="서비스 화면과 개인화된 회의 결과의 기본 언어예요."
+                  label="모국어 설정"
                   value={language}
                   options={LANGUAGE_OPTIONS}
                   onChange={setLanguage}
                 />
                 <SelectField
-                  id="caption-language"
-                  label="자막 번역 언어"
-                  description="회의 중 개인 화면에 표시할 자막 언어예요."
-                  value={captionLanguage}
+                  id="preferred-language"
+                  label="자주 사용하는 언어"
+                  value={preferredLanguage}
                   options={LANGUAGE_OPTIONS}
-                  onChange={setCaptionLanguage}
+                  onChange={setPreferredLanguage}
                 />
                 <SelectField
                   id="minutes-language"
                   label="회의록 기본 언어"
-                  description="회의 종료 후 생성되는 회의록의 기본 언어예요."
                   value={minutesLanguage}
                   options={LANGUAGE_OPTIONS}
                   onChange={setMinutesLanguage}
@@ -227,20 +214,18 @@ export default function MyPage() {
           )}
 
           {section === "culture" && (
-            <section>
-              <div className="mb-8">
-                <h2 className="text-2xl font-bold tracking-tight text-gray-900">
-                  문화권·직무 설정
-                </h2>
+            <section className="flex min-h-full flex-col">
+              <div className="mb-12">
+                <h2 className="text-2xl font-bold tracking-tight text-gray-900">직무 설정</h2>
                 <p className="mt-1.5 text-sm text-gray-400">
-                  문화 각주와 직무별 회의록의 개인화 기준을 설정해요.
+                  문화 각주와 직무별 회의록에 사용할 정보를 설정해요.
                 </p>
               </div>
 
-              <div className="grid gap-5 sm:grid-cols-2">
+              <div className="grid max-w-2xl gap-x-10 gap-y-7 sm:grid-cols-2">
                 <SelectField
                   id="culture"
-                  label="문화권"
+                  label="주 활동 문화권"
                   value={culture}
                   options={CULTURE_OPTIONS}
                   onChange={setCulture}
@@ -252,11 +237,22 @@ export default function MyPage() {
                   options={JOB_OPTIONS}
                   onChange={setJobRole}
                 />
-              </div>
-
-              <div className="mt-6 rounded-xl bg-primary/10 px-4 py-4 text-sm leading-6 text-[#466875]">
-                선택한 문화권과 직무는 상대 문화에 맞는 표현을 설명하고, 회의록을 내 업무
-                관점으로 정리하는 데 사용돼요.
+                <label className="text-xs font-bold text-gray-700">
+                  소속 조직
+                  <input
+                    value={organization}
+                    onChange={(event) => setOrganization(event.target.value)}
+                    className={`${inputClass} mt-2`}
+                  />
+                </label>
+                <label className="text-xs font-bold text-gray-700">
+                  부서
+                  <input
+                    value={department}
+                    onChange={(event) => setDepartment(event.target.value)}
+                    className={`${inputClass} mt-2`}
+                  />
+                </label>
               </div>
 
               <SaveActions onSave={handleSave} />
@@ -264,7 +260,7 @@ export default function MyPage() {
           )}
 
           {section === "account" && (
-            <section>
+            <section className="flex min-h-full flex-col">
               <div className="mb-8">
                 <h2 className="text-2xl font-bold tracking-tight text-gray-900">계정 관리</h2>
                 <p className="mt-1.5 text-sm text-gray-400">
@@ -420,17 +416,11 @@ function SelectField({ id, label, description, value, options, onChange }: Selec
 
 function SaveActions({ onSave }: { onSave: () => void }) {
   return (
-    <div className="mt-8 flex justify-end gap-2">
-      <button
-        type="button"
-        className="rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-bold text-gray-600"
-      >
-        취소
-      </button>
+    <div className="mt-auto flex justify-end pt-12">
       <button
         type="button"
         onClick={onSave}
-        className="rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90"
+        className="min-w-36 rounded-lg bg-primary px-5 py-3 text-sm font-bold text-white transition-opacity hover:opacity-90"
       >
         변경사항 저장
       </button>
