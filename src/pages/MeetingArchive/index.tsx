@@ -299,7 +299,7 @@ export default function MeetingArchive() {
 
   if (loading) {
     return (
-      <main className="min-h-[calc(100vh-72px)] bg-[#F7F9FA] px-6 py-10">
+      <main className="min-h-[calc(100vh-72px)] bg-[#EDECE6] px-6 py-10">
         <div className="mx-auto max-w-[1280px]">
           <h1 className="mb-7 text-[28px] font-semibold text-[#172033]">
             과거 회의록 보관함
@@ -315,13 +315,13 @@ export default function MeetingArchive() {
 
   if (error) {
     return (
-      <main className="min-h-[calc(100vh-72px)] bg-[#F7F9FA] px-6 py-10">
+      <main className="min-h-[calc(100vh-72px)] bg-[#EDECE6] px-6 py-10">
         <div className="mx-auto max-w-[1280px]">
           <h1 className="mb-7 text-[28px] font-semibold text-[#172033]">
             과거 회의록 보관함
           </h1>
 
-          <div className="rounded-2xl border border-[#E0E5E8] bg-white py-20 text-center text-sm text-[#EC7A6B]">
+          <div className="rounded-2xl border border-[#E0E5E8] bg-white py-20 text-center text-sm text-[#E2795F]">
             {error}
           </div>
         </div>
@@ -331,10 +331,7 @@ export default function MeetingArchive() {
 
   return (
     <main
-      className="min-h-[calc(100vh-72px)] bg-[#F7F9FA] px-6 py-10 text-[#172033] lg:px-10"
-      style={{
-        fontFamily: '"Noto Sans Display", "Noto Sans KR", sans-serif',
-      }}
+      className="min-h-[calc(100vh-72px)] bg-[#EDECE6] px-6 py-10 text-[#172033] lg:px-10"
     >
       <div className="mx-auto max-w-[1280px]">
         <h1 className="mb-7 text-[28px] font-semibold tracking-[-0.03em]">
@@ -351,20 +348,20 @@ export default function MeetingArchive() {
                 if (e.key === "Enter") handleSearch();
               }}
               placeholder="회의 제목, 참가자 검색"
-              className="h-12 rounded-xl border border-[#D8DEE3] px-4 text-sm outline-none focus:border-[#5F94A8]"
+              className="h-12 rounded-xl border border-[#D8DEE3] px-4 text-sm outline-none focus:border-[#2C7B98]"
             />
 
             <input
               type="date"
               value={dateInput}
               onChange={(e) => setDateInput(e.target.value)}
-              className="h-12 rounded-xl border border-[#D8DEE3] px-4 text-sm outline-none focus:border-[#5F94A8]"
+              className="h-12 rounded-xl border border-[#D8DEE3] px-4 text-sm outline-none focus:border-[#2C7B98]"
             />
 
             <select
               value={participantInput}
               onChange={(e) => setParticipantInput(e.target.value)}
-              className="h-12 rounded-xl border border-[#D8DEE3] bg-white px-4 text-sm outline-none focus:border-[#5F94A8]"
+              className="h-12 rounded-xl border border-[#D8DEE3] bg-white px-4 text-sm outline-none focus:border-[#2C7B98]"
             >
               {participantOptions.map((name) => (
                 <option key={name} value={name}>
@@ -376,7 +373,7 @@ export default function MeetingArchive() {
             <button
               type="button"
               onClick={handleSearch}
-              className="h-12 rounded-xl bg-[#5F94A8] px-7 text-sm font-semibold text-white transition hover:opacity-90"
+              className="h-12 rounded-xl bg-[#2C7B98] px-7 text-sm font-semibold text-white transition hover:opacity-90"
             >
               검색
             </button>
@@ -440,7 +437,7 @@ export default function MeetingArchive() {
                   <button
                     type="button"
                     onClick={() => handleDetail(meeting.id)}
-                    className="text-left text-sm font-medium text-[#5F94A8] hover:opacity-70 md:text-right"
+                    className="text-left text-sm font-medium text-[#2C7B98] hover:opacity-70 md:text-right"
                   >
                     상세보기 ›
                   </button>
@@ -475,7 +472,7 @@ export default function MeetingArchive() {
                   onClick={() => setCurrentPage(page)}
                   className={`h-9 min-w-9 rounded-lg px-3 text-sm font-medium ${
                     currentPage === page
-                      ? "bg-[#5F94A8] text-white"
+                      ? "bg-[#2C7B98] text-white"
                       : "text-[#6F7B88]"
                   }`}
                 >

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Input from "../../components/common/Input";
 import ConsentGate from "../../components/meeting/ConsentGate";
+import { meetingApi } from "../../apis/meetingApi";
 
 // 담당: 주연
 // 단계: form(정보 입력) → created(링크 발급) → consent(동의) → 회의장 이동
@@ -19,14 +20,23 @@ export default function MeetingCreate() {
   const [description, setDescription] = useState("");
   const [expectedCount, setExpectedCount] = useState("");
   const [inviteUrl, setInviteUrl] = useState("");
+  const [meetingId, setMeetingId] = useState("");
   const [copied, setCopied] = useState(false);
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: meetingApi.create 연동, 응답으로 실제 meetingId/inviteUrl 받기
-    const fakeId = "a1b2c3d4";
-    setInviteUrl(`cultbridge.app/m/${fakeId}`);
-    setStep("created");
+    try {
+      const res = await meetingApi.create({
+        title,
+        description: description || undefined,
+        expected_count: expectedCount ? Number(expectedCount) : undefined,
+      });
+      setInviteUrl(res.data.invite_url);
+      setMeetingId(res.data.id);
+      setStep("created");
+    } catch (e) {
+      // TODO: 에러 처리
+    }
   };
 
   const handleCopy = () => {
@@ -38,10 +48,11 @@ export default function MeetingCreate() {
   if (step === "consent") {
     return (
       <ConsentGate
+        meetingId={meetingId}
         meetingTitle={title}
         meetingDate={now.toLocaleString("ko-KR")}
         isCreator
-        onAgree={() => navigate("/meetings/a1b2c3d4")}
+        onAgree={() => navigate(`/meetings/${meetingId}`)}
       />
     );
   }
