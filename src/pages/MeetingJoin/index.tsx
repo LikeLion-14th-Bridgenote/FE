@@ -1,50 +1,73 @@
-import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { meetingApi } from "../../apis/meetingApi";
 import ConsentGate from "../../components/meeting/ConsentGate";
 
 // 담당: 주연
-// 단계: check(회의 유효성 확인) → consent(동의)
-// TODO: meetingApi.get(id)로 실제 회의 정보/생성자 이름 받아오기
+// 참가 흐름: URL의 ?code= 쿼리로 자동 참가 시도 → 동의
+// 예: /meetings/{id}/join?code=IQWLG9
 
-type Step = "check" | "consent";
+type Step = "joining" | "consent" | "error";
 
 export default function MeetingJoin() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [step, setStep] = useState<Step>("check");
+  const [step, setStep] = useState<Step>("joining");
+  const [error, setError] = useState("");
+  const [meetingTitle, setMeetingTitle] = useState("");
 
-  // TODO: 실제로는 meetingApi.get(id) 응답으로 대체
-  const meetingCreator = "장주연";
-  const meetingTitle = "오늘의 회의";
-  const meetingDate = "2026.08.05 14:30";
+  const inviteCode = searchParams.get("code");
 
-  if (step === "consent") {
+  useEffect(() => {
+    const doJoin = async () => {
+      if (!id || !inviteCode) {
+        setError("유효하지 않은 초대 링크입니다. 코드가 포함된 링크로 다시 접속해주세요.");
+        setStep("error");
+        return;
+      }
+      try {
+        const res = await meetingApi.join(id, inviteCode);
+        setMeetingTitle(res.data.profile?.nickname ? "회의" : "회의"); // TODO: 회의 제목은 별도 조회 필요
+        setStep("consent");
+      } catch (e) {
+        setError("초대 코드가 올바르지 않거나, 회의를 찾을 수 없습니다.");
+        setStep("error");
+      }
+    };
+    doJoin();
+  }, [id, inviteCode]);
+
+  if (step === "consent" && id) {
+    const meetingId = id;
     return (
       <ConsentGate
-        meetingTitle={meetingTitle}
-        meetingDate={meetingDate}
+        meetingId={meetingId}
+        meetingTitle={meetingTitle || "참여 회의"}
+        meetingDate={new Date().toLocaleString("ko-KR")}
         isCreator={false}
-        onAgree={() => navigate(`/meetings/${id}`)}
+        onAgree={() => navigate(`/meetings/${meetingId}`)}
       />
     );
   }
 
   return (
     <div className="min-h-screen bg-[#EDECE6] flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-sm p-8">
-        <p className="text-lg font-semibold text-gray-900 mb-1">회의 참여</p>
-        <p className="text-xs text-gray-400 mb-6">로그인 확인, 회의 ID 파싱 완료</p>
-
-        <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-700 mb-6">
-          유효한 회의를 찾았어요. 생성자: {meetingCreator}
-        </div>
-
-        <button
-          onClick={() => setStep("consent")}
-          className="w-full py-3 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 transition-opacity"
-        >
-          다음: 데이터 처리 동의
-        </button>
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-sm p-8 text-center">
+        {step === "joining" && (
+          <p className="text-sm text-gray-500">회의 참가 확인 중...</p>
+        )}
+        {step === "error" && (
+          <>
+            <p className="text-sm text-accent mb-4">{error}</p>
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="px-4 py-2 rounded-lg border border-gray-300 text-sm hover:bg-gray-50"
+            >
+              대시보드로 돌아가기
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
