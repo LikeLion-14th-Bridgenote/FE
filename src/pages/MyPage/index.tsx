@@ -1,12 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { authApi } from "../../apis/authApi";
+import { userApi } from "../../apis/userApi";
+import { useAuthStore } from "../../stores/authStore";
 
-type Section = "profile" | "language" | "culture" | "account";
+type Section = "profile" | "language" | "job" | "account";
 type ConfirmModal = "logout" | "withdraw" | null;
 
 const SECTIONS: { id: Section; label: string }[] = [
   { id: "profile", label: "프로필" },
   { id: "language", label: "언어 설정" },
-  { id: "culture", label: "직무 설정" },
+  { id: "job", label: "직무 설정" },
   { id: "account", label: "계정 관리" },
 ];
 
@@ -33,38 +37,139 @@ const JOB_OPTIONS = [
 const inputClass =
   "h-11 w-full rounded-lg border border-gray-200 bg-[#F1F3F2] px-3 text-sm text-gray-800 outline-none transition focus:border-primary focus:ring-3 focus:ring-primary/10 disabled:cursor-default disabled:text-gray-500";
 
+const IS_DEV_PREVIEW = import.meta.env.VITE_SKIP_AUTH === "true";
+
 export default function MyPage() {
+  const navigate = useNavigate();
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const clearAuth = useAuthStore((state) => state.logout);
   const [section, setSection] = useState<Section>("profile");
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [isPasswordOpen, setIsPasswordOpen] = useState(false);
   const [modal, setModal] = useState<ConfirmModal>(null);
   const [toast, setToast] = useState("");
+  const [isLoading, setIsLoading] = useState(Boolean(accessToken));
+  const [isSaving, setIsSaving] = useState(false);
 
-  const [nickname, setNickname] = useState("김재웅");
-  const [organization, setOrganization] = useState("LikeLion Bridgenote");
+  const [nickname, setNickname] = useState(IS_DEV_PREVIEW ? "김재웅" : "");
+  const [email, setEmail] = useState(IS_DEV_PREVIEW ? "jaewoong@bridgenote.team" : "");
+  const [organization, setOrganization] = useState(IS_DEV_PREVIEW ? "LikeLion Bridgenote" : "");
   const [language, setLanguage] = useState("ko");
-  const [preferredLanguage, setPreferredLanguage] = useState("en");
-  const [minutesLanguage, setMinutesLanguage] = useState("ko");
   const [culture, setCulture] = useState("KR");
   const [jobRole, setJobRole] = useState("pm");
-  const [department, setDepartment] = useState("Product Team");
-
-  const email = "jaewoong@bridgenote.team";
 
   const showToast = (message: string) => {
     setToast(message);
     window.setTimeout(() => setToast(""), 1800);
   };
 
-  const handleSave = () => {
-    setIsEditingProfile(false);
-    showToast("변경사항을 저장했어요.");
+  useEffect(() => {
+    if (!accessToken) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    const loadProfile = async () => {
+      try {
+        const { data } = await userApi.getProfile();
+        if (isCancelled) return;
+
+        setNickname(data.nickname);
+        setEmail(data.email);
+        setLanguage(data.language);
+        setCulture(data.culture);
+        setJobRole(data.job_role);
+        setOrganization(data.organization ?? "");
+      } catch {
+        if (!isCancelled) {
+          setToast("프로필 정보를 불러오지 못했어요.");
+          window.setTimeout(() => setToast(""), 1800);
+        }
+      } finally {
+        if (!isCancelled) setIsLoading(false);
+      }
+    };
+
+    void loadProfile();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [accessToken]);
+
+  const handleSave = async () => {
+    if (!accessToken) {
+      setIsEditingProfile(false);
+      showToast("변경사항을 미리보기에 반영했어요.");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const payload =
+        section === "profile"
+          ? { nickname }
+          : section === "language"
+            ? { language }
+            : {
+                culture,
+                job_role: jobRole,
+                organization: organization.trim() || null,
+              };
+
+      const { data } = await userApi.updateProfile(payload);
+      setNickname(data.nickname);
+      setEmail(data.email);
+      setLanguage(data.language);
+      setCulture(data.culture);
+      setJobRole(data.job_role);
+      setOrganization(data.organization ?? "");
+      setIsEditingProfile(false);
+      showToast("변경사항을 저장했어요.");
+    } catch {
+      showToast("변경사항을 저장하지 못했어요.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleSectionChange = (nextSection: Section) => {
     setSection(nextSection);
     setIsEditingProfile(false);
-    setIsPasswordOpen(false);
+  };
+
+  const handleConfirm = async () => {
+    if (modal === "logout") {
+      try {
+        if (accessToken) await authApi.logout();
+      } finally {
+        clearAuth();
+        setModal(null);
+        navigate("/login");
+      }
+      return;
+    }
+
+    if (modal === "withdraw") {
+      if (!accessToken) {
+        setModal(null);
+        showToast("개발 미리보기에서는 회원 탈퇴를 실행하지 않아요.");
+        return;
+      }
+
+      setIsSaving(true);
+      try {
+        await userApi.withdraw();
+        clearAuth();
+        setModal(null);
+        navigate("/");
+      } catch {
+        setModal(null);
+        showToast("회원 탈퇴를 처리하지 못했어요.");
+      } finally {
+        setIsSaving(false);
+      }
+    }
   };
 
   return (
@@ -102,7 +207,13 @@ export default function MyPage() {
           </button>
         </aside>
 
-        <main className="min-h-[560px] p-6 sm:p-8 md:min-h-0 md:px-14 md:py-12 lg:px-20">
+        <main
+          className="min-h-[560px] p-6 sm:p-8 md:min-h-0 md:px-14 md:py-12 lg:px-20"
+          aria-busy={isLoading || isSaving}
+        >
+          {isLoading && (
+            <p className="mb-5 text-sm text-gray-400">프로필 정보를 불러오는 중이에요.</p>
+          )}
           {section === "profile" && (
             <section className="flex min-h-full flex-col">
               <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row">
@@ -126,7 +237,7 @@ export default function MyPage() {
                   className="grid h-16 w-16 place-items-center rounded-full bg-primary/10 text-lg font-bold text-primary"
                   style={{ flex: "0 0 4rem" }}
                 >
-                  김
+                  {nickname.trim().charAt(0) || "?"}
                 </div>
                 <div className="min-w-0">
                   <p className="font-bold text-gray-900">{nickname}</p>
@@ -167,9 +278,10 @@ export default function MyPage() {
                   <button
                     type="button"
                     onClick={handleSave}
-                    className="rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90"
+                    disabled={isSaving}
+                    className="rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
                   >
-                    변경사항 저장
+                    {isSaving ? "저장 중..." : "변경사항 저장"}
                   </button>
                 </div>
               )}
@@ -189,31 +301,18 @@ export default function MyPage() {
                 <SelectField
                   id="native-language"
                   label="모국어 설정"
+                  description="실시간 자막 번역과 회의록 표시 언어의 기본값으로 사용돼요."
                   value={language}
                   options={LANGUAGE_OPTIONS}
                   onChange={setLanguage}
                 />
-                <SelectField
-                  id="preferred-language"
-                  label="자주 사용하는 언어"
-                  value={preferredLanguage}
-                  options={LANGUAGE_OPTIONS}
-                  onChange={setPreferredLanguage}
-                />
-                <SelectField
-                  id="minutes-language"
-                  label="회의록 기본 언어"
-                  value={minutesLanguage}
-                  options={LANGUAGE_OPTIONS}
-                  onChange={setMinutesLanguage}
-                />
               </div>
 
-              <SaveActions onSave={handleSave} />
+              <SaveActions onSave={handleSave} isSaving={isSaving} />
             </section>
           )}
 
-          {section === "culture" && (
+          {section === "job" && (
             <section className="flex min-h-full flex-col">
               <div className="mb-12">
                 <h2 className="text-2xl font-bold tracking-tight text-gray-900">직무 설정</h2>
@@ -222,7 +321,7 @@ export default function MyPage() {
                 </p>
               </div>
 
-              <div className="grid max-w-2xl gap-x-10 gap-y-7 sm:grid-cols-2">
+              <div className="grid w-full max-w-md gap-8">
                 <SelectField
                   id="culture"
                   label="주 활동 문화권"
@@ -230,14 +329,7 @@ export default function MyPage() {
                   options={CULTURE_OPTIONS}
                   onChange={setCulture}
                 />
-                <SelectField
-                  id="job-role"
-                  label="직무"
-                  value={jobRole}
-                  options={JOB_OPTIONS}
-                  onChange={setJobRole}
-                />
-                <label className="text-xs font-bold text-gray-700">
+                <label className="block text-xs font-bold text-gray-700">
                   소속 조직
                   <input
                     value={organization}
@@ -245,17 +337,16 @@ export default function MyPage() {
                     className={`${inputClass} mt-2`}
                   />
                 </label>
-                <label className="text-xs font-bold text-gray-700">
-                  부서
-                  <input
-                    value={department}
-                    onChange={(event) => setDepartment(event.target.value)}
-                    className={`${inputClass} mt-2`}
-                  />
-                </label>
+                <SelectField
+                  id="job-role"
+                  label="직무"
+                  value={jobRole}
+                  options={JOB_OPTIONS}
+                  onChange={setJobRole}
+                />
               </div>
 
-              <SaveActions onSave={handleSave} />
+              <SaveActions onSave={handleSave} isSaving={isSaving} />
             </section>
           )}
 
@@ -270,46 +361,6 @@ export default function MyPage() {
 
               <div className="border-t border-gray-100">
                 <AccountRow title="가입 이메일" description={email} />
-
-                <div className="border-b border-gray-100 py-5">
-                  <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
-                    <div>
-                      <h3 className="text-sm font-bold text-gray-800">비밀번호</h3>
-                      <p className="mt-1 text-xs text-gray-400">
-                        주기적인 변경으로 계정을 안전하게 보호하세요.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsPasswordOpen((current) => !current)}
-                      className="rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-bold text-gray-600 transition-colors hover:border-primary hover:text-primary"
-                    >
-                      {isPasswordOpen ? "변경 취소" : "비밀번호 변경"}
-                    </button>
-                  </div>
-
-                  {isPasswordOpen && (
-                    <div className="mt-5 grid gap-3 rounded-xl bg-[#F8F9F7] p-4 sm:grid-cols-2">
-                      <label className="text-xs font-bold text-gray-700">
-                        새 비밀번호
-                        <input type="password" placeholder="8자 이상" className={`${inputClass} mt-2 bg-white`} />
-                      </label>
-                      <label className="text-xs font-bold text-gray-700">
-                        비밀번호 확인
-                        <input type="password" placeholder="다시 입력" className={`${inputClass} mt-2 bg-white`} />
-                      </label>
-                      <div className="sm:col-span-2 sm:text-right">
-                        <button
-                          type="button"
-                          onClick={handleSave}
-                          className="rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white"
-                        >
-                          비밀번호 변경
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
 
                 <AccountRow
                   title="로그아웃"
@@ -365,16 +416,13 @@ export default function MyPage() {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  const message = modal === "logout" ? "로그아웃을 준비했어요." : "회원 탈퇴를 준비했어요.";
-                  setModal(null);
-                  showToast(message);
-                }}
+                onClick={handleConfirm}
+                disabled={isSaving}
                 className={`rounded-lg px-4 py-2.5 text-sm font-bold text-white ${
                   modal === "logout" ? "bg-primary" : "bg-accent"
-                }`}
+                } disabled:cursor-wait disabled:opacity-60`}
               >
-                {modal === "logout" ? "로그아웃" : "회원 탈퇴"}
+                {isSaving ? "처리 중..." : modal === "logout" ? "로그아웃" : "회원 탈퇴"}
               </button>
             </div>
           </div>
@@ -414,15 +462,22 @@ function SelectField({ id, label, description, value, options, onChange }: Selec
   );
 }
 
-function SaveActions({ onSave }: { onSave: () => void }) {
+function SaveActions({
+  onSave,
+  isSaving,
+}: {
+  onSave: () => void | Promise<void>;
+  isSaving: boolean;
+}) {
   return (
     <div className="mt-auto flex justify-end pt-12">
       <button
         type="button"
         onClick={onSave}
-        className="min-w-36 rounded-lg bg-primary px-5 py-3 text-sm font-bold text-white transition-opacity hover:opacity-90"
+        disabled={isSaving}
+        className="min-w-36 rounded-lg bg-primary px-5 py-3 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
       >
-        변경사항 저장
+        {isSaving ? "저장 중..." : "변경사항 저장"}
       </button>
     </div>
   );
