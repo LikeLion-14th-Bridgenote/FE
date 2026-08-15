@@ -78,7 +78,7 @@ export default function MyPage() {
         setEmail(data.email);
         setLanguage(data.language);
         setCulture(data.culture);
-        setJobRole(data.job_role);
+        setJobRole(data.job);
         setOrganization(data.organization ?? "");
       } catch {
         if (!isCancelled) {
@@ -113,7 +113,7 @@ export default function MyPage() {
             ? { language }
             : {
                 culture,
-                job_role: jobRole,
+                job: jobRole,
                 organization: organization.trim() || null,
               };
 
@@ -122,7 +122,7 @@ export default function MyPage() {
       setEmail(data.email);
       setLanguage(data.language);
       setCulture(data.culture);
-      setJobRole(data.job_role);
+      setJobRole(data.job);
       setOrganization(data.organization ?? "");
       setIsEditingProfile(false);
       showToast("변경사항을 저장했어요.");

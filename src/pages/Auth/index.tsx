@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { t } from "../../i18n";
 import { useLangStore } from "../../stores/langStore";
+import { useAuthStore } from "../../stores/authStore";
+import { authApi } from "../../apis/authApi";
 
 // 담당: 재웅 (주연이 먼저 초안 작업)
 // 회원가입 폼에 모국어/문화권/직업/기관까지 포함되면서, /onboarding 페이지 제거됨
@@ -38,11 +40,14 @@ const CULTURE_OPTIONS = [
 
 export default function Auth() {
   const { lang } = useLangStore();
+  const navigate = useNavigate();
+  const { setTokens, setProfileId } = useAuthStore();
   const [mode, setMode] = useState<Mode>("login");
 
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPw, setLoginPw] = useState("");
   const [loginError, setLoginError] = useState(false);
+  const [loginLoading, setLoginLoading] = useState(false);
 
   const [nickname, setNickname] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
@@ -51,20 +56,49 @@ export default function Auth() {
   const [culture, setCulture] = useState("");
   const [job, setJob] = useState("");
   const [org, setOrg] = useState("");
+  const [signupLoading, setSignupLoading] = useState(false);
+  const [signupError, setSignupError] = useState("");
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: authApi.login 연동
-    if (loginPw.length < 4) {
-      setLoginError(true);
-      return;
-    }
     setLoginError(false);
+    setLoginLoading(true);
+    try {
+      const res = await authApi.login(loginEmail, loginPw);
+      setTokens(res.data.access_token, res.data.refresh_token);
+      setProfileId(res.data.user.id);
+      navigate("/dashboard");
+    } catch (e) {
+      setLoginError(true);
+    } finally {
+      setLoginLoading(false);
+    }
   };
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: authApi.signup 연동
+    setSignupError("");
+    setSignupLoading(true);
+    try {
+      await authApi.signup({
+        email: signupEmail,
+        password: signupPw,
+        nickname,
+        language,
+        culture,
+        job,
+        organization: org || undefined,
+      });
+      // 회원가입 응답엔 토큰이 없어서, 가입 직후 로그인 API 한 번 더 호출
+      const loginRes = await authApi.login(signupEmail, signupPw);
+      setTokens(loginRes.data.access_token, loginRes.data.refresh_token);
+      setProfileId(loginRes.data.user.id);
+      navigate("/dashboard");
+    } catch (e) {
+      setSignupError("회원가입 중 오류가 발생했습니다. 입력 정보를 확인해주세요.");
+    } finally {
+      setSignupLoading(false);
+    }
   };
 
   return (
@@ -119,9 +153,10 @@ export default function Auth() {
 
             <button
               type="submit"
-              className="mt-2 w-full py-3 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 transition-opacity"
+              disabled={loginLoading}
+              className="mt-2 w-full py-3 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
             >
-              {t("common.login", lang)}
+              {loginLoading ? "로그인 중..." : t("common.login", lang)}
             </button>
           </form>
         ) : (
@@ -236,11 +271,14 @@ export default function Auth() {
               </div>
             </div>
 
+            {signupError && <p className="text-xs text-accent">{signupError}</p>}
+
             <button
               type="submit"
-              className="mt-2 w-full py-3 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 transition-opacity"
+              disabled={signupLoading}
+              className="mt-2 w-full py-3 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
             >
-              {t("common.signup", lang)}
+              {signupLoading ? "가입 중..." : t("common.signup", lang)}
             </button>
 
             <p className="text-xs text-gray-400 text-center">

@@ -20,7 +20,7 @@ interface SignupResponse {
   nickname: string;
   language: string | null;
   culture: string | null;
-  job_role: string | null;
+  job: string | null;
   organization: string | null;
   created_at: string;
 }
@@ -37,7 +37,7 @@ export const authApi = {
     nickname: string;
     language: string;
     culture: string;
-    job_role: string;
+    job: string;
     organization?: string;
   }) => api.post<SignupResponse>("/auth/signup", data),
 

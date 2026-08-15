@@ -3,8 +3,10 @@ import { create } from "zustand";
 interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
+  profileId: string | null;
   isAuthenticated: boolean;
   setTokens: (access: string, refresh: string) => void;
+  setProfileId: (id: string) => void;
   logout: () => void;
 }
 
@@ -12,8 +14,11 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set) => ({
   accessToken: null,
   refreshToken: null,
+  profileId: null,
   isAuthenticated: false,
   setTokens: (access, refresh) =>
     set({ accessToken: access, refreshToken: refresh, isAuthenticated: true }),
-  logout: () => set({ accessToken: null, refreshToken: null, isAuthenticated: false }),
+  setProfileId: (id) => set({ profileId: id }),
+  logout: () =>
+    set({ accessToken: null, refreshToken: null, profileId: null, isAuthenticated: false }),
 }));
