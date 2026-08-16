@@ -4,12 +4,12 @@ export interface UserProfile {
   nickname: string;
   language: string;
   culture: string;
-  job_role: string;
+  job: string;
   organization: string | null;
   created_at: string;
   updated_at: string;
 }
 
 export type UserProfileUpdate = Partial<
-  Pick<UserProfile, "nickname" | "language" | "culture" | "job_role" | "organization">
+  Pick<UserProfile, "nickname" | "language" | "culture" | "job" | "organization">
 >;
