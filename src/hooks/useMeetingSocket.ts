@@ -29,6 +29,9 @@ interface WarningMessage {
 
 interface MeetingStatusMessage {
   type: "meeting_started" | "meeting_ended";
+  meeting_id: string;
+  started_at?: string;
+  ended_at?: string;
 }
 
 interface ParticipantEventMessage {
@@ -52,8 +55,8 @@ interface UseMeetingSocketOptions {
   onCaption?: (msg: CaptionMessage) => void;
   onTranslation?: (msg: TranslationMessage) => void;
   onWarning?: (msg: WarningMessage) => void;
-  onMeetingStarted?: () => void;
-  onMeetingEnded?: () => void;
+  onMeetingStarted?: (startedAt: string) => void;
+  onMeetingEnded?: (endedAt: string) => void;
   onParticipantJoined?: (msg: ParticipantEventMessage) => void;
   onParticipantLeft?: (msg: ParticipantEventMessage) => void;
   onClose?: (code: number) => void;
@@ -82,6 +85,8 @@ export function useMeetingSocket({
 
     ws.onmessage = (event) => {
       const data: ServerMessage = JSON.parse(event.data);
+      // eslint-disable-next-line no-console
+      console.log("[WS 수신]", data.type, data);
       switch (data.type) {
         case "caption":
           onCaption?.(data);
@@ -93,10 +98,10 @@ export function useMeetingSocket({
           onWarning?.(data);
           break;
         case "meeting_started":
-          onMeetingStarted?.();
+          onMeetingStarted?.(data.started_at ?? "");
           break;
         case "meeting_ended":
-          onMeetingEnded?.();
+          onMeetingEnded?.(data.ended_at ?? "");
           break;
         case "participant_joined":
           onParticipantJoined?.(data);

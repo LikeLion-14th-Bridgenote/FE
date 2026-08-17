@@ -26,6 +26,11 @@ interface SubtitleLine {
   note?: CulturalNote;
 }
 
+interface Toast {
+  id: string;
+  text: string;
+}
+
 function NoteCard({ line, isMe }: { line: SubtitleLine; isMe: boolean }) {
   if (!line.note) return null;
   const misreadLabel = isMe ? "수신자 오해 소지" : "내가 오해할 소지";
@@ -65,6 +70,7 @@ export default function MeetingRoom() {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [hostId, setHostId] = useState<string | null>(null);
   const [meetingStatus, setMeetingStatus] = useState<"waiting" | "live" | "ended">("waiting");
+  const [meetingStartedAt, setMeetingStartedAt] = useState<string | null>(null);
   const [subtitles, setSubtitles] = useState<SubtitleLine[]>([]);
   const [currentSpeakerIndex, setCurrentSpeakerIndex] = useState(0);
   const [openNoteId, setOpenNoteId] = useState<string | null>(null);
@@ -73,6 +79,14 @@ export default function MeetingRoom() {
   const [error, setError] = useState("");
   const [ending, setEnding] = useState(false);
   const [wsClosedCode, setWsClosedCode] = useState<number | null>(null);
+  const [wsConnected, setWsConnected] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const pushToast = (text: string) => {
+    const id = `${Date.now()}-${Math.random()}`;
+    setToasts((prev) => [...prev, { id, text }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3000);
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -83,6 +97,7 @@ export default function MeetingRoom() {
         setParticipants(res.data.participants || []);
         setHostId(res.data.host_id ?? null);
         setMeetingStatus(res.data.status ?? "waiting");
+        setMeetingStartedAt(res.data.started_at ?? null);
       } catch (e) {
         setError("회의 정보를 불러오지 못했습니다.");
       } finally {
@@ -92,10 +107,15 @@ export default function MeetingRoom() {
     loadMeeting();
   }, [id]);
 
+  // 서버가 알려준 시작 시각 기준으로 경과 시간 계산 (모든 참가자가 동일하게 보임)
   useEffect(() => {
-    const timer = setInterval(() => setElapsedSeconds((s) => s + 1), 1000);
+    if (!meetingStartedAt) return;
+    const startTime = new Date(meetingStartedAt).getTime();
+    const timer = setInterval(() => {
+      setElapsedSeconds(Math.max(0, Math.floor((Date.now() - startTime) / 1000)));
+    }, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [meetingStartedAt]);
 
   const { sendSpeakerSwitch, sendAudioChunk } = useMeetingSocket({
     meetingId: id,
@@ -123,23 +143,39 @@ export default function MeetingRoom() {
         )
       );
     },
-    onMeetingStarted: () => setMeetingStatus("live"),
+    onMeetingStarted: (startedAt) => {
+      setMeetingStatus("live");
+      if (startedAt) setMeetingStartedAt(startedAt);
+      setWsConnected(true);
+    },
     onMeetingEnded: () => {
       setMeetingStatus("ended");
-      // 회의가 끝나면 회의록 페이지로 자동 이동
-      if (id) navigate(`/meetings/${id}/minutes`);
+      pushToast("회의가 종료되었습니다. 회의록으로 이동합니다.");
+      if (id) setTimeout(() => navigate(`/meetings/${id}/minutes`), 1200);
     },
     onParticipantJoined: (msg) => {
       setParticipants((prev) => {
         if (prev.some((p) => p.profile_id === msg.profile_id)) return prev;
+        pushToast(`${msg.nickname}님이 입장했습니다`);
         return [...prev, { profile_id: msg.profile_id, nickname: msg.nickname, language: msg.language, speaker_index: msg.speaker_index }];
       });
     },
     onParticipantLeft: (msg) => {
-      setParticipants((prev) => prev.filter((p) => p.profile_id !== msg.profile_id));
+      setParticipants((prev) => {
+        const target = prev.find((p) => p.profile_id === msg.profile_id);
+        if (target) pushToast(`${target.nickname}님이 퇴장했습니다`);
+        return prev.filter((p) => p.profile_id !== msg.profile_id);
+      });
     },
-    onClose: (code) => setWsClosedCode(code),
+    onClose: (code) => {
+      setWsClosedCode(code);
+      setWsConnected(false);
+    },
   });
+
+  useEffect(() => {
+    setWsConnected(true);
+  }, [id, accessToken]);
 
   const isCurrentSpeaker = participants.find((p) => p.speaker_index === currentSpeakerIndex)?.profile_id === profileId;
 
@@ -160,9 +196,8 @@ export default function MeetingRoom() {
     setEnding(true);
     try {
       await meetingApi.end(id);
-      navigate(`/meetings/${id}/minutes`);
     } catch (e) {
-      // TODO: 에러 처리
+      pushToast("회의 종료 중 오류가 발생했습니다.");
     } finally {
       setEnding(false);
     }
@@ -175,7 +210,6 @@ export default function MeetingRoom() {
   };
 
   const isHost = hostId === profileId;
-  console.log("hostId:", hostId, "profileId:", profileId, "isHost:", isHost);
   const notedLines = subtitles.filter((l) => l.note);
 
   if (loading) {
@@ -214,15 +248,44 @@ export default function MeetingRoom() {
 
   return (
     <div className="min-h-screen bg-[#EDECE6] flex flex-col">
+      {/* 토스트 알림 */}
+      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2">
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className="bg-gray-900 text-white text-xs px-4 py-2.5 rounded-lg shadow-lg animate-[fadeIn_0.2s_ease-out]"
+          >
+            {toast.text}
+          </div>
+        ))}
+      </div>
+
       <header className="flex items-center justify-between px-6 h-16 bg-white border-b border-gray-100">
         <div>
-          <p className="text-sm font-semibold">
-            회의 진행 중 {meetingStatus === "waiting" && <span className="text-gray-400 font-normal">(대기 중)</span>}
-          </p>
-          <div className="flex items-center gap-1.5 text-xs text-gray-400">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold">회의 진행 중</p>
+            {meetingStatus === "waiting" && (
+              <span className="text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">대기 중</span>
+            )}
+            <span
+              className={`text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                wsConnected ? "text-primary bg-primary/10" : "text-accent bg-accent/10"
+              }`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${wsConnected ? "bg-primary" : "bg-accent"}`} />
+              {wsConnected ? "연결됨" : "연결 끊김"}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-0.5">
             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
             <span>경과 {formatElapsed(elapsedSeconds)}</span>
-            {micError && <span className="text-accent ml-2">{micError}</span>}
+            {isCurrentSpeaker && !micError && (
+              <span className="flex items-center gap-1 text-primary ml-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                마이크 켜짐
+              </span>
+            )}
+            {micError && <span className="text-accent ml-2">⚠ {micError}</span>}
           </div>
         </div>
         {isHost && (
@@ -237,22 +300,27 @@ export default function MeetingRoom() {
       </header>
 
       <div className="flex flex-1 min-h-0">
+        {/* 참가자 아바타 스트립 - 데스크톱 */}
         <div className="hidden lg:flex flex-col items-center gap-5 w-20 py-6 bg-white/60 border-r border-gray-100">
           <span className="text-[10px] text-gray-400 text-center leading-tight mb-1">
             아바타 클릭 시<br />발화자 전환
           </span>
+          {participants.length === 0 && (
+            <p className="text-[10px] text-gray-300 text-center px-1">참가자 대기 중</p>
+          )}
           {participants.map((p) => {
             const isSpeaking = currentSpeakerIndex === p.speaker_index;
+            const isMePart = p.profile_id === profileId;
             return (
               <button key={p.profile_id} onClick={() => handleSpeakerSwitch(p.speaker_index)} className="flex flex-col items-center gap-1 group">
                 <div className="relative w-11 h-11">
                   {isSpeaking && <SpeakingRing />}
                   <div
-                    className={`relative w-11 h-11 rounded-full flex items-center justify-center text-xs font-semibold transition-all bg-gray-100 text-gray-500 ${
-                      isSpeaking ? "ring-2 ring-primary" : "group-hover:ring-2 group-hover:ring-gray-200"
-                    }`}
+                    className={`relative w-11 h-11 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${
+                      isMePart ? "bg-primary/10 text-primary" : "bg-gray-100 text-gray-500"
+                    } ${isSpeaking ? "ring-2 ring-primary" : "group-hover:ring-2 group-hover:ring-gray-200"}`}
                   >
-                    {p.language.toUpperCase()}
+                    {isMePart ? "나" : p.language.toUpperCase()}
                     <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-white" />
                   </div>
                 </div>
@@ -262,19 +330,24 @@ export default function MeetingRoom() {
           })}
         </div>
 
+        {/* 모바일 상단 아바타 스트립 */}
         <div className="lg:hidden fixed top-16 left-0 right-0 z-10 flex items-center gap-5 px-4 py-2.5 bg-white/90 backdrop-blur-sm border-b border-gray-100 overflow-x-auto">
+          {participants.length === 0 && (
+            <p className="text-[11px] text-gray-300">참가자 대기 중</p>
+          )}
           {participants.map((p) => {
             const isSpeaking = currentSpeakerIndex === p.speaker_index;
+            const isMePart = p.profile_id === profileId;
             return (
               <button key={p.profile_id} onClick={() => handleSpeakerSwitch(p.speaker_index)} className="flex flex-col items-center gap-1 flex-shrink-0">
                 <div className="relative w-9 h-9">
                   {isSpeaking && <SpeakingRing />}
                   <div
-                    className={`relative w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-semibold bg-gray-100 text-gray-500 ${
-                      isSpeaking ? "ring-2 ring-primary" : ""
-                    }`}
+                    className={`relative w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-semibold ${
+                      isMePart ? "bg-primary/10 text-primary" : "bg-gray-100 text-gray-500"
+                    } ${isSpeaking ? "ring-2 ring-primary" : ""}`}
                   >
-                    {p.language.toUpperCase()}
+                    {isMePart ? "나" : p.language.toUpperCase()}
                     <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-green-500 border-2 border-white" />
                   </div>
                 </div>
@@ -283,6 +356,7 @@ export default function MeetingRoom() {
           })}
         </div>
 
+        {/* 자막 피드 */}
         <div className="flex-1 overflow-y-auto px-4 lg:px-8 py-6 lg:py-8 pt-16 lg:pt-8 flex flex-col gap-3 max-w-2xl mx-auto w-full">
           {subtitles.length === 0 && (
             <p className="text-sm text-gray-400 text-center mt-10">
