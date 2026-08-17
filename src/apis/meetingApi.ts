@@ -1,6 +1,5 @@
 import api from "./axiosInstance";
 
-// BE 담당: 전진수 (/api/meetings/...)
 export const meetingApi = {
   create: (data: { title?: string; description?: string; expected_count?: number }) =>
     api.post("/api/meetings", data),
@@ -20,5 +19,9 @@ export const meetingApi = {
   getMinutes: (meetingId: string, params?: { language?: string; job_role?: string }) =>
     api.get(`/api/meetings/${meetingId}/minutes`, { params }),
 
-  getUtterances: (meetingId: string) => api.get(`/api/meetings/${meetingId}/utterances`),
+  getUtterances: (meetingId: string, page?: number) =>
+    api.get(`/api/meetings/${meetingId}/utterances`, { params: { page } }),
+
+  getCulturalNotes: (meetingId: string) =>
+    api.get(`/api/meetings/${meetingId}/cultural-notes`),
 };

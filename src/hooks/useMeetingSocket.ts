@@ -1,10 +1,5 @@
 import { useEffect, useRef } from "react";
 
-// 담당: 주연
-// 순수 WebSocket 방식 (STOMP 아님, 진수님 확인 완료)
-// 메시지는 type 필드로 구분: caption / translation / warning
-// 클라이언트 → 서버로는 audio_chunk / speaker_switch 전송
-
 interface CaptionMessage {
   type: "caption";
   sentence_id: string;
@@ -26,9 +21,30 @@ interface WarningMessage {
   sentence_id: string;
   risk_level: string;
   note_type: string;
+  speaker_intent: string;
+  listener_misread: string;
+  advice: string;
+  rewrite_text: string;
 }
 
-type ServerMessage = CaptionMessage | TranslationMessage | WarningMessage;
+interface MeetingStatusMessage {
+  type: "meeting_started" | "meeting_ended";
+}
+
+interface ParticipantEventMessage {
+  type: "participant_joined" | "participant_left";
+  profile_id: string;
+  nickname: string;
+  language: string;
+  speaker_index: number;
+}
+
+type ServerMessage =
+  | CaptionMessage
+  | TranslationMessage
+  | WarningMessage
+  | MeetingStatusMessage
+  | ParticipantEventMessage;
 
 interface UseMeetingSocketOptions {
   meetingId: string | undefined;
@@ -36,6 +52,11 @@ interface UseMeetingSocketOptions {
   onCaption?: (msg: CaptionMessage) => void;
   onTranslation?: (msg: TranslationMessage) => void;
   onWarning?: (msg: WarningMessage) => void;
+  onMeetingStarted?: () => void;
+  onMeetingEnded?: () => void;
+  onParticipantJoined?: (msg: ParticipantEventMessage) => void;
+  onParticipantLeft?: (msg: ParticipantEventMessage) => void;
+  onClose?: (code: number) => void;
 }
 
 export function useMeetingSocket({
@@ -44,6 +65,11 @@ export function useMeetingSocket({
   onCaption,
   onTranslation,
   onWarning,
+  onMeetingStarted,
+  onMeetingEnded,
+  onParticipantJoined,
+  onParticipantLeft,
+  onClose,
 }: UseMeetingSocketOptions) {
   const wsRef = useRef<WebSocket | null>(null);
 
@@ -56,14 +82,36 @@ export function useMeetingSocket({
 
     ws.onmessage = (event) => {
       const data: ServerMessage = JSON.parse(event.data);
-      if (data.type === "caption") onCaption?.(data);
-      if (data.type === "translation") onTranslation?.(data);
-      if (data.type === "warning") onWarning?.(data);
+      switch (data.type) {
+        case "caption":
+          onCaption?.(data);
+          break;
+        case "translation":
+          onTranslation?.(data);
+          break;
+        case "warning":
+          onWarning?.(data);
+          break;
+        case "meeting_started":
+          onMeetingStarted?.();
+          break;
+        case "meeting_ended":
+          onMeetingEnded?.();
+          break;
+        case "participant_joined":
+          onParticipantJoined?.(data);
+          break;
+        case "participant_left":
+          onParticipantLeft?.(data);
+          break;
+      }
     };
 
     ws.onclose = (event) => {
       if (event.code === 4401) console.error("WebSocket 인증 실패");
       if (event.code === 4404) console.error("회의를 찾을 수 없음");
+      if (event.code === 4409) console.error("이미 종료된 회의");
+      onClose?.(event.code);
     };
 
     return () => {

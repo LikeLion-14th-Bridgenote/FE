@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { meetingApi } from "../../apis/meetingApi";
+import { useAuthStore } from "../../stores/authStore";
 
 const MEETING_MINUTES_STYLES = `
 @font-face {
@@ -18,7 +19,6 @@ const MEETING_MINUTES_STYLES = `
   font-weight: 500;
   font-display: swap;
 }
-
 @font-face {
   font-family: "YuhanKimberlyPureunsoop";
   src: url("https://cdn.jsdelivr.net/gh/Project-Noonnu/2607101517@font-2/font-2/font-2-700.woff2")
@@ -612,359 +612,40 @@ const MEETING_MINUTES_STYLES = `
   outline-offset: 2px;
   border-radius: 6px;
 }
-
+  
 @media (min-width: 1024px) {
-
-  .mm-page {
-    padding: 32px 40px 80px;
-  }
+  .mm-page { padding: 32px 40px 80px; }
 }
 
 @media (max-width: 860px) {
-  .mm-transcript-head {
-    display: none;
-  }
-
-  .mm-turn-grid {
-    grid-template-columns: 1fr;
-    gap: 4px;
-  }
+  .mm-transcript-head { display: none; }
+  .mm-turn-grid { grid-template-columns: 1fr; gap: 6px; }
+  .mm-table-row { grid-template-columns: 1fr; gap: 6px; }
+  .mm-stats { grid-template-columns: repeat(2, 1fr); }
 }
-
-@media (max-width: 820px) {
-  .mm-stats {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 720px) {
-  .mm-table-row {
-    grid-template-columns: 1fr;
-    gap: 4px;
-  }
-}
-
 `;
 
+type Lang = "ko" | "en" | "vi";
+type TabKey = "tr" | "dec" | "dis" | "act" | "role" | "cul";
+type RoleKey = "dev" | "design" | "pm" | "sales";
 
-type UiText = {
-  dec: string;
-  dis: string;
-  act: string;
-  task: string;
-  owner: string;
-  due: string;
-  tr: string;
-  none: string;
-  persp: string;
-  digest: string;
-  count: (n: number) => string;
-  more: string;
-};
-
-type ActionItem = {
-  t: string;
-  o: string;
-  d: string | null;
-};
-
-type MeetingData = {
-  dec: string[];
-  dis: string[];
-  act: ActionItem[];
-};
-
-type CultureNote = {
-  cat: string;
-  q: string;
-  d: string;
-};
-
-type TranscriptCultureNote = {
-  cat: string;
-  intent: string;
-  misread: string;
-  advice: string;
-  rewrite: string;
-};
-
-type TranscriptItem = {
-  time: string;
-  who: string;
-  src: string;
-  tr: Partial<Record<Lang, string>>;
-  note?: TranscriptCultureNote;
-};
-
-type TabItem = {
+interface TabItem {
   key: TabKey;
   label: string;
-  count?: number;
-};
+}
 
-type RoleItem = {
+interface RoleItem {
   key: RoleKey;
   label: string;
-};
-
-const UI: Record<Lang, UiText> = {
-  ko: {
-    dec: "결정",
-    dis: "논의",
-    act: "액션 아이템",
-    task: "할 일",
-    owner: "담당자",
-    due: "기한",
-    tr: "번역문",
-    none: "미정",
-    persp: "관점 핵심 요약",
-    digest: "이 회의의 결정",
-    count: (n) => `${n}건`,
-    more: "논의·액션 아이템도 보기 →",
-  },
-  en: {
-    dec: "Decisions",
-    dis: "Discussions",
-    act: "Action items",
-    task: "Task",
-    owner: "Owner",
-    due: "Due",
-    tr: "Translation",
-    none: "—",
-    persp: "summary",
-    digest: "Decisions from this meeting",
-    count: (n) => `${n}`,
-    more: "See discussions & action items →",
-  },
-  vi: {
-    dec: "Quyết định",
-    dis: "Thảo luận",
-    act: "Việc cần làm",
-    task: "Việc",
-    owner: "Phụ trách",
-    due: "Hạn",
-    tr: "Bản dịch",
-    none: "—",
-    persp: "tóm tắt",
-    digest: "Quyết định của cuộc họp",
-    count: (n) => `${n}`,
-    more: "Xem thảo luận & việc cần làm →",
-  },
-};
-
-const ROLE_LABEL: Record<RoleKey, Record<Lang, string>> = {
-  dev: { ko: "개발", en: "Dev", vi: "Kỹ thuật" },
-  design: { ko: "디자인", en: "Design", vi: "Thiết kế" },
-  pm: { ko: "PM", en: "PM", vi: "PM" },
-  sales: { ko: "영업", en: "Sales", vi: "Kinh doanh" },
-};
-
-const DATA: Record<Lang, MeetingData> = {
-  ko: {
-    dec: [
-      "금요일까지 1차 기능 개발을 완료하기로 결정했습니다.",
-      "실시간 번역 기능을 MVP 범위에 포함하기로 결정했습니다.",
-      "회의록 자동 생성은 회의 종료 후 배치 처리하기로 했습니다.",
-    ],
-    dis: [
-      "로그인 UI는 디자인 시안 확정 후 착수하기로 논의했습니다.",
-      "한국·베트남 팀 일정은 시차 없는 오전대를 우선합니다.",
-    ],
-    act: [
-      { t: "로그인 API 마무리", o: "종윤", d: "금요일" },
-      { t: "로그인 UI 구현", o: "Minh", d: null },
-      { t: "디자인 시안 공유", o: "수민", d: "수요일" },
-      { t: "번역 품질 점검", o: "종윤", d: "다음 주" },
-    ],
-  },
-  en: {
-    dec: [
-      "Complete the first round of feature development by Friday.",
-      "Include real-time translation in the MVP scope.",
-      "Generate minutes as a batch job after the meeting ends.",
-    ],
-    dis: [
-      "Start the login UI only after the design draft is confirmed.",
-      "Prefer morning slots with no time difference for the KR–VN schedule.",
-    ],
-    act: [
-      { t: "Finish the login API", o: "종윤", d: "Friday" },
-      { t: "Build the login UI", o: "Minh", d: null },
-      { t: "Share the design draft", o: "수민", d: "Wednesday" },
-      { t: "Review translation quality", o: "종윤", d: "Next week" },
-    ],
-  },
-  vi: {
-    dec: [
-      "Hoàn thành đợt phát triển tính năng đầu tiên trước thứ Sáu.",
-      "Đưa dịch thời gian thực vào phạm vi MVP.",
-      "Tạo biên bản theo lô sau khi cuộc họp kết thúc.",
-    ],
-    dis: [
-      "Chỉ bắt đầu giao diện đăng nhập sau khi chốt bản thiết kế.",
-      "Ưu tiên buổi sáng không lệch múi giờ cho lịch KR–VN.",
-    ],
-    act: [
-      { t: "Hoàn thành API đăng nhập", o: "종윤", d: "Thứ Sáu" },
-      { t: "Làm giao diện đăng nhập", o: "Minh", d: null },
-      { t: "Chia sẻ bản thiết kế", o: "수민", d: "Thứ Tư" },
-      { t: "Kiểm tra chất lượng dịch", o: "종윤", d: "Tuần sau" },
-    ],
-  },
-};
-
-const ROLES: Record<RoleKey, Record<Lang, string[]>> = {
-  dev: {
-    ko: [
-      "로그인 API는 금요일 마감. UI(Minh)와 인터페이스 계약을 먼저 맞출 것.",
-      "디자인 시안(수요일) 확정 전에는 UI 착수를 보류.",
-    ],
-    en: [
-      "Login API is due Friday; align the interface contract with UI (Minh) first.",
-      "Hold UI work until the design draft (Wed) is confirmed.",
-    ],
-    vi: [
-      "API đăng nhập hạn thứ Sáu; thống nhất giao diện với UI (Minh) trước.",
-      "Hoãn phần UI cho tới khi chốt bản thiết kế (thứ Tư).",
-    ],
-  },
-  design: {
-    ko: [
-      "디자인 시안을 수요일에 공유 — 로그인 UI 착수의 선행 조건.",
-      "시안 확정이 전체 일정의 크리티컬 패스.",
-    ],
-    en: [
-      "Share the design draft on Wednesday — prerequisite for the login UI.",
-      "Draft sign-off is the critical path for the schedule.",
-    ],
-    vi: [
-      "Chia sẻ bản thiết kế vào thứ Tư — điều kiện để bắt đầu UI.",
-      "Chốt thiết kế là đường găng của tiến độ.",
-    ],
-  },
-  pm: {
-    ko: [
-      "담당·마감 확정(API 금요일, 시안 수요일). 다음 회의 금요일 15:00.",
-      "한↔베 일정은 시차 없는 오전대를 우선.",
-    ],
-    en: [
-      "Owners and deadlines set (API Fri, draft Wed). Next meeting Fri 15:00.",
-      "Prefer morning slots for the KR–VN schedule.",
-    ],
-    vi: [
-      "Đã chốt phụ trách và hạn (API T6, thiết kế T4). Họp tiếp T6 15:00.",
-      "Ưu tiên buổi sáng cho lịch KR–VN.",
-    ],
-  },
-  sales: {
-    ko: [
-      "이번 회의는 내부 일정 중심 — 영업 관련 액션 없음.",
-      "고객 대상 마일스톤 공유는 시안 확정 후 논의 예정.",
-    ],
-    en: [
-      "This meeting focused on the internal schedule — no sales actions.",
-      "Client-facing milestone sharing to be discussed after draft sign-off.",
-    ],
-    vi: [
-      "Cuộc họp tập trung lịch nội bộ — không có việc cho sales.",
-      "Chia sẻ mốc cho khách sẽ bàn sau khi chốt thiết kế.",
-    ],
-  },
-};
-
-const CULTURE: CultureNote[] = [
-  {
-    cat: "문화 이해",
-    q: "금요일까지는 조금 어려울 것 같습니다.",
-    d: "간접적인 표현으로 일정 준수가 어렵다는 의미를 전달한 것으로 해석될 수 있습니다.",
-  },
-  {
-    cat: "문화 이해",
-    q: "한번 검토해보겠습니다.",
-    d: "긍정적인 확답보다 추가 검토가 필요하다는 의미로 사용되었을 가능성이 있습니다.",
-  },
-  {
-    cat: "커뮤니케이션",
-    q: "이 부분은 다시 수정해주세요.",
-    d: "문화권에 따라 비교적 직접적인 지시로 받아들여질 수 있습니다.",
-  },
-  {
-    cat: "업무 스타일",
-    q: "담당자가 확인하고 공유해주세요.",
-    d: "담당자와 완료 시점을 구체적으로 지정하면 실행 과정의 혼선을 줄일 수 있습니다.",
-  },
-  {
-    cat: "커뮤니케이션",
-    q: "좋은 것 같습니다.",
-    d: "동의인지 단순한 긍정적 반응인지 추가 확인이 필요할 수 있습니다.",
-  },
-  {
-    cat: "문화 이해",
-    q: "가능하면 오늘 중으로 부탁드립니다.",
-    d: "상대 문화권에 따라 요청의 강도가 다르게 해석될 수 있습니다.",
-  },
-];
-
-const TRANSCRIPT: TranscriptItem[] = [
-  {
-    time: "00:08",
-    who: "종윤",
-    src: "로그인 API는 금요일까지 제가 마무리하겠습니다.",
-    tr: {
-      en: "I'll finish the login API by Friday.",
-      vi: "Tôi sẽ hoàn thành API đăng nhập trước thứ Sáu.",
-    },
-  },
-  {
-    time: "01:52",
-    who: "Minh",
-    src: "Tôi sẽ cố gắng hết sức để làm phần giao diện.",
-    tr: {
-      ko: "제가 화면 쪽은 최선을 다해 보겠습니다.",
-      en: "I'll try my best on the interface.",
-    },
-    note: {
-      cat: "커뮤니케이션",
-      intent: "최선을 다하겠다는 의지 표현",
-      misread: "한국 청자는 확답 회피나 실패 여지로 해석할 수 있습니다",
-      advice: "완료 조건과 기한을 함께 물어 확정하세요",
-      rewrite: "제가 수요일까지 초안, 금요일까지 완성하는 것을 목표로 하겠습니다.",
-    },
-  },
-  {
-    time: "03:41",
-    who: "수민",
-    src: "네, 검토해보겠습니다.",
-    tr: {
-      en: "Yes, I'll review it.",
-      vi: "Vâng, tôi sẽ xem xét.",
-    },
-    note: {
-      cat: "문화 이해",
-      intent: "확답이 아닌 유보 — 진행 여부가 열려 있음",
-      misread: "미국·베트남 청자는 승인이나 약속으로 오독할 수 있습니다",
-      advice: "구체적인 기한을 되물어 확인하세요",
-      rewrite: "검토가 필요합니다 — 언제까지 회신드리면 될까요?",
-    },
-  },
-  {
-    time: "05:20",
-    who: "종윤",
-    src: "그럼 다음 회의는 금요일 오후 3시로 하겠습니다.",
-    tr: {
-      en: "Then let's meet again Friday at 3 PM.",
-      vi: "Vậy họp tiếp vào 3 giờ chiều thứ Sáu.",
-    },
-  },
-];
+}
 
 const TAB_ITEMS: TabItem[] = [
   { key: "tr", label: "전체 전사 기록" },
-  { key: "dec", label: "결정", count: 3 },
-  { key: "dis", label: "논의", count: 2 },
-  { key: "act", label: "액션 아이템", count: 4 },
+  { key: "dec", label: "결정" },
+  { key: "dis", label: "논의" },
+  { key: "act", label: "액션 아이템" },
   { key: "role", label: "관점별 핵심 요약" },
-  { key: "cul", label: "문화 가이드", count: 6 },
+  { key: "cul", label: "문화 가이드" },
 ];
 
 const ROLE_ITEMS: RoleItem[] = [
@@ -974,29 +655,258 @@ const ROLE_ITEMS: RoleItem[] = [
   { key: "sales", label: "영업" },
 ];
 
-type Lang = "ko" | "en" | "vi";
-type TabKey = "tr" | "dec" | "dis" | "act" | "role" | "cul";
-type RoleKey = "dev" | "design" | "pm" | "sales";
+// TODO: 원본에 있던 정확한 문구로 교체 확인 필요 (임시로 채워둔 라벨)
+const UI: Record<Lang, {
+  digest: string;
+  count: (n: number) => string;
+  tr: string;
+  dec: string;
+  dis: string;
+  act: string;
+  persp: string;
+  task: string;
+  owner: string;
+  due: string;
+  none: string;
+}> = {
+  ko: {
+    digest: "핵심 결정 요약",
+    count: (n) => `${n}건`,
+    tr: "번역문",
+    dec: "결정",
+    dis: "논의",
+    act: "액션 아이템",
+    persp: "관점 요약",
+    task: "작업",
+    owner: "담당자",
+    due: "기한",
+    none: "미정",
+  },
+  en: {
+    digest: "Key Decisions",
+    count: (n) => `${n} items`,
+    tr: "Translation",
+    dec: "Decisions",
+    dis: "Discussions",
+    act: "Action Items",
+    persp: "Summary",
+    task: "Task",
+    owner: "Owner",
+    due: "Due",
+    none: "TBD",
+  },
+  vi: {
+    digest: "Quyết định chính",
+    count: (n) => `${n} mục`,
+    tr: "Bản dịch",
+    dec: "Quyết định",
+    dis: "Thảo luận",
+    act: "Việc cần làm",
+    persp: "Tóm tắt",
+    task: "Công việc",
+    owner: "Người phụ trách",
+    due: "Hạn chót",
+    none: "Chưa xác định",
+  },
+};
+
+// TODO: 원본에 있던 정확한 직무명으로 교체 확인 필요
+const ROLE_LABEL: Record<RoleKey, Record<Lang, string>> = {
+  dev: { ko: "개발", en: "Development", vi: "Phát triển" },
+  design: { ko: "디자인", en: "Design", vi: "Thiết kế" },
+  pm: { ko: "PM", en: "PM", vi: "PM" },
+  sales: { ko: "영업", en: "Sales", vi: "Kinh doanh" },
+};
+
+interface RealParticipant {
+  profile_id: string;
+  nickname: string;
+  language: string;
+}
+
+interface RealMeeting {
+  title: string;
+  started_at?: string;
+  ended_at?: string;
+  participants: RealParticipant[];
+}
+
+interface RealUtterance {
+  sentence_id: string | number;
+  speaker_id?: string;
+  source_text?: string;
+  spoken_at?: string;
+}
+
+interface RealMinutesItem {
+  language: Lang;
+  job_role: string;
+  decisions: string[];
+  discussions: string[];
+  action_items: string[];
+}
+
+interface RealCulturalNote {
+  sentence_id?: string;
+  note_type?: string;
+  speaker_intent?: string;
+  listener_misread?: string;
+  advice?: string;
+  rewrite_text?: string;
+}
 
 export default function MeetingMinutes() {
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const accessToken = useAuthStore((s) => s.accessToken);
 
   const [lang, setLang] = useState<Lang>("ko");
   const [activeTab, setActiveTab] = useState<TabKey>("tr");
   const [role, setRole] = useState<RoleKey>("dev");
   const [digestOpen, setDigestOpen] = useState(true);
 
-  const ui = UI[lang];
-  const data = DATA[lang];
+  const [meeting, setMeeting] = useState<RealMeeting | null>(null);
+  const [utterances, setUtterances] = useState<RealUtterance[]>([]);
+  const [minutesAll, setMinutesAll] = useState<RealMinutesItem[]>([]);
+  const [culturalNotes, setCulturalNotes] = useState<RealCulturalNote[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const transcriptRows = useMemo(
-    () =>
-      TRANSCRIPT.map((item) => ({
-        ...item,
-        translated: item.tr?.[lang] || "-",
-      })),
-    [lang]
+  useEffect(() => {
+    if (!id || !accessToken) return;
+    const load = async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const [meetingRes, utterRes, notesRes] = await Promise.all([
+          meetingApi.get(id),
+          meetingApi.getUtterances(id),
+          meetingApi.getCulturalNotes(id),
+        ]);
+        setMeeting(meetingRes.data);
+        setUtterances(meetingRes.data.utterances || utterRes.data.utterances || []);
+        setCulturalNotes(notesRes.data.cultural_notes || notesRes.data || []);
+      } catch (e) {
+        setError("회의록을 불러오는 중 오류가 발생했습니다.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [id, accessToken]);
+
+  useEffect(() => {
+    if (!id || !accessToken) return;
+    let cancelled = false;
+    let tries = 0;
+    const MAX_TRIES = 20;
+
+    const loadMinutes = async () => {
+      try {
+        const res = await meetingApi.getMinutes(id);
+        if (cancelled) return;
+        if (res.data.status === "pending" || res.data.minutes === undefined) {
+          if (tries < MAX_TRIES) {
+            tries += 1;
+            setTimeout(loadMinutes, 3000);
+          }
+          return;
+        }
+        setMinutesAll(res.data.minutes || []);
+      } catch (e) {
+        if (!cancelled) setMinutesAll([]);
+      }
+    };
+    loadMinutes();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, accessToken]);
+
+  const ui = UI[lang];
+
+  const currentLangMinutes = useMemo(
+    () => minutesAll.filter((m) => m.language === lang),
+    [minutesAll, lang]
   );
+  const decisions = useMemo(
+    () => Array.from(new Set(currentLangMinutes.flatMap((m) => m.decisions || []))),
+    [currentLangMinutes]
+  );
+  const discussions = useMemo(
+    () => Array.from(new Set(currentLangMinutes.flatMap((m) => m.discussions || []))),
+    [currentLangMinutes]
+  );
+  const actionItems = useMemo(
+    () => Array.from(new Set(currentLangMinutes.flatMap((m) => m.action_items || []))),
+    [currentLangMinutes]
+  );
+
+  const roleMinutes = useMemo(
+    () => minutesAll.find((m) => m.language === lang && m.job_role === role),
+    [minutesAll, lang, role]
+  );
+
+  const transcriptRows = useMemo(() => {
+    return utterances.map((u) => {
+      const speaker = meeting?.participants?.find((p) => p.profile_id === u.speaker_id);
+      const note = culturalNotes.find((n) => n.sentence_id === String(u.sentence_id));
+      return {
+        time: u.spoken_at
+          ? new Date(u.spoken_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })
+          : "-",
+        who: speaker?.nickname || "-",
+        src: u.source_text || "-",
+        note: note
+          ? {
+              cat: note.note_type || "문화 각주",
+              intent: note.speaker_intent || "-",
+              misread: note.listener_misread || "-",
+              advice: note.advice || "-",
+              rewrite: note.rewrite_text || "-",
+            }
+          : undefined,
+      };
+    });
+  }, [utterances, meeting, culturalNotes]);
+
+  const cultureStatsByCat = useMemo(() => {
+    const result: Record<string, number> = {};
+    culturalNotes.forEach((n) => {
+      const cat = n.note_type || "기타";
+      result[cat] = (result[cat] || 0) + 1;
+    });
+    return result;
+  }, [culturalNotes]);
+
+  if (loading) {
+    return (
+      <div className="meeting-minutes-page">
+        <style>{MEETING_MINUTES_STYLES}</style>
+        <main className="mm-page">
+          <div className="mm-wrap" style={{ textAlign: "center", padding: "80px 0", color: "#94A3B8" }}>
+            회의록을 불러오는 중입니다.
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (error || !meeting) {
+    return (
+      <div className="meeting-minutes-page">
+        <style>{MEETING_MINUTES_STYLES}</style>
+        <main className="mm-page">
+          <div className="mm-wrap" style={{ textAlign: "center", padding: "80px 0" }}>
+            <p style={{ color: "#E2795F", marginBottom: 16 }}>{error || "회의를 찾을 수 없습니다."}</p>
+            <button className="mm-back" onClick={() => navigate("/archive")}>
+              ← 회의록 목록
+            </button>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="meeting-minutes-page" lang={lang}>
@@ -1006,31 +916,26 @@ export default function MeetingMinutes() {
           <section className="mm-info">
             <div className="mm-title-row">
               <div>
-                <button
-                  className="mm-back"
-                  type="button"
-                  onClick={() => navigate("/archive")}
-                >
+                <button className="mm-back" type="button" onClick={() => navigate("/archive")}>
                   ← 회의록 목록
                 </button>
 
-                <h1>글로벌 프로젝트 킥오프 회의</h1>
+                <h1>{meeting.title}</h1>
 
                 <div className="mm-meta">
-                  <span>📅 2026.08.04</span>
-                  <span>14:00</span>
-                  <span>⏱ 45분</span>
-                  <span>참가자 3명</span>
+                  <span>📅 {meeting.started_at ? new Date(meeting.started_at).toLocaleDateString("ko-KR") : "-"}</span>
+                  <span>
+                    {meeting.started_at
+                      ? new Date(meeting.started_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })
+                      : "-"}
+                  </span>
+                  <span>참가자 {meeting.participants?.length ?? 0}명</span>
                 </div>
               </div>
 
               <div className="mm-lang-row">
                 <span className="mm-lang-label">표시 언어</span>
-                <select
-                  value={lang}
-                  aria-label="표시 언어"
-                  onChange={(e) => setLang(e.target.value as Lang)}
-                >
+                <select value={lang} aria-label="표시 언어" onChange={(e) => setLang(e.target.value as Lang)}>
                   <option value="ko">한국어</option>
                   <option value="en">English</option>
                   <option value="vi">Tiếng Việt</option>
@@ -1050,7 +955,6 @@ export default function MeetingMinutes() {
                 onClick={() => setActiveTab(tab.key)}
               >
                 {tab.label}
-                {tab.count ? <span className="mm-tab-count">{tab.count}</span> : null}
               </button>
             ))}
           </div>
@@ -1065,21 +969,20 @@ export default function MeetingMinutes() {
                   onClick={() => setDigestOpen((prev) => !prev)}
                 >
                   <span className="mm-digest-title">{ui.digest}</span>
-                  <span className="mm-digest-count">{ui.count(data.dec.length)}</span>
+                  <span className="mm-digest-count">{ui.count(decisions.length)}</span>
                   <span className="mm-digest-arrow">▾</span>
                 </button>
 
                 {digestOpen && (
                   <div className="mm-digest-body">
                     <ul>
-                      {data.dec.map((item) => (
+                      {decisions.map((item) => (
                         <li key={item}>
                           <span className="mm-dot" />
                           <span>{item}</span>
                         </li>
                       ))}
                     </ul>
-
                   </div>
                 )}
               </div>
@@ -1094,41 +997,47 @@ export default function MeetingMinutes() {
                   <div>{ui.tr}</div>
                 </div>
 
-                {transcriptRows.map((item) => (
-                  <div className="mm-turn" key={`${item.time}-${item.who}`}>
-                    <div className="mm-turn-grid">
-                      <div className="mm-time">{item.time}</div>
-                      <div className="mm-who">{item.who}</div>
-                      <div className="mm-source">{item.src}</div>
-                      <div className="mm-translation">{item.translated}</div>
-                    </div>
-
-                    {item.note && (
-                      <div className="mm-note">
-                        <div className="mm-note-head">
-                          <span className="mm-note-tag">✦ 문화 각주</span>
-                          <span className="mm-note-chip">{item.note.cat}</span>
-                        </div>
-
-                        <dl className="mm-note-grid">
-                          <dt>화자 의도</dt>
-                          <dd>{item.note.intent}</dd>
-
-                          <dt>오해 소지</dt>
-                          <dd>{item.note.misread}</dd>
-
-                          <dt>조언</dt>
-                          <dd>{item.note.advice}</dd>
-
-                          <div className="mm-rewrite">
-                            <b>이렇게 말하면</b>
-                            {item.note.rewrite}
-                          </div>
-                        </dl>
-                      </div>
-                    )}
+                {transcriptRows.length === 0 ? (
+                  <div style={{ padding: "40px 20px", textAlign: "center", color: "#94A3B8" }}>
+                    전사 기록이 없습니다.
                   </div>
-                ))}
+                ) : (
+                  transcriptRows.map((item, idx) => (
+                    <div className="mm-turn" key={idx}>
+                      <div className="mm-turn-grid">
+                        <div className="mm-time">{item.time}</div>
+                        <div className="mm-who">{item.who}</div>
+                        <div className="mm-source">{item.src}</div>
+                        <div className="mm-translation">-</div>
+                      </div>
+
+                      {item.note && (
+                        <div className="mm-note">
+                          <div className="mm-note-head">
+                            <span className="mm-note-tag">✦ 문화 각주</span>
+                            <span className="mm-note-chip">{item.note.cat}</span>
+                          </div>
+
+                          <dl className="mm-note-grid">
+                            <dt>화자 의도</dt>
+                            <dd>{item.note.intent}</dd>
+
+                            <dt>오해 소지</dt>
+                            <dd>{item.note.misread}</dd>
+
+                            <dt>조언</dt>
+                            <dd>{item.note.advice}</dd>
+
+                            <div className="mm-rewrite">
+                              <b>이렇게 말하면</b>
+                              {item.note.rewrite}
+                            </div>
+                          </dl>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
               </div>
             </section>
           )}
@@ -1136,51 +1045,59 @@ export default function MeetingMinutes() {
           {activeTab === "dec" && (
             <section className="mm-panel">
               <h2>
-                {ui.dec} ({data.dec.length})
+                {ui.dec} ({decisions.length})
               </h2>
-
-              {data.dec.map((item) => (
-                <div className="mm-card" key={item}>
-                  {item}
-                </div>
-              ))}
+              {decisions.length === 0 ? (
+                <div className="mm-card">등록된 결정사항이 없습니다.</div>
+              ) : (
+                decisions.map((item) => (
+                  <div className="mm-card" key={item}>
+                    {item}
+                  </div>
+                ))
+              )}
             </section>
           )}
 
           {activeTab === "dis" && (
             <section className="mm-panel">
               <h2>
-                {ui.dis} ({data.dis.length})
+                {ui.dis} ({discussions.length})
               </h2>
-
-              {data.dis.map((item) => (
-                <div className="mm-card" key={item}>
-                  {item}
-                </div>
-              ))}
+              {discussions.length === 0 ? (
+                <div className="mm-card">등록된 논의가 없습니다.</div>
+              ) : (
+                discussions.map((item) => (
+                  <div className="mm-card" key={item}>
+                    {item}
+                  </div>
+                ))
+              )}
             </section>
           )}
 
           {activeTab === "act" && (
             <section className="mm-panel">
               <h2>
-                {ui.act} ({data.act.length})
+                {ui.act} ({actionItems.length})
               </h2>
-
               <div className="mm-tablebox">
                 <div className="mm-table-row mm-table-head">
                   <div>{ui.task}</div>
                   <div>{ui.owner}</div>
                   <div>{ui.due}</div>
                 </div>
-
-                {data.act.map((item) => (
-                  <div className="mm-table-row" key={`${item.t}-${item.o}`}>
-                    <div>{item.t}</div>
-                    <div className="mm-owner">{item.o}</div>
-                    <div className="mm-due">{item.d || ui.none}</div>
-                  </div>
-                ))}
+                {actionItems.length === 0 ? (
+                  <div style={{ padding: "20px" }}>{ui.none}</div>
+                ) : (
+                  actionItems.map((item) => (
+                    <div className="mm-table-row" key={item}>
+                      <div>{item}</div>
+                      <div className="mm-owner">-</div>
+                      <div className="mm-due">{ui.none}</div>
+                    </div>
+                  ))
+                )}
               </div>
             </section>
           )}
@@ -1206,11 +1123,15 @@ export default function MeetingMinutes() {
                 {ROLE_LABEL[role][lang]} {ui.persp}
               </h2>
 
-              {ROLES[role][lang].map((item) => (
-                <div className="mm-card" key={item}>
-                  {item}
-                </div>
-              ))}
+              {!roleMinutes ? (
+                <div className="mm-card">해당 직무의 회의록이 없습니다.</div>
+              ) : (
+                roleMinutes.decisions.map((item) => (
+                  <div className="mm-card" key={item}>
+                    {item}
+                  </div>
+                ))
+              )}
             </section>
           )}
 
@@ -1222,69 +1143,39 @@ export default function MeetingMinutes() {
                 <div className="mm-stat">
                   <div className="mm-stat-label">전체 각주</div>
                   <div className="mm-stat-value">
-                    6<span>개</span>
+                    {culturalNotes.length}
+                    <span>개</span>
                   </div>
                 </div>
-
-                <div className="mm-stat">
-                  <div className="mm-stat-label">문화 이해</div>
-                  <div className="mm-stat-value">
-                    3<span>개</span>
-                  </div>
-                </div>
-
-                <div className="mm-stat">
-                  <div className="mm-stat-label">커뮤니케이션</div>
-                  <div className="mm-stat-value">
-                    2<span>개</span>
-                  </div>
-                </div>
-
-                <div className="mm-stat">
-                  <div className="mm-stat-label">업무 스타일</div>
-                  <div className="mm-stat-value">
-                    1<span>개</span>
-                  </div>
-                </div>
+                {Object.entries(cultureStatsByCat)
+                  .slice(0, 3)
+                  .map(([cat, count]) => (
+                    <div className="mm-stat" key={cat}>
+                      <div className="mm-stat-label">{cat}</div>
+                      <div className="mm-stat-value">
+                        {count}
+                        <span>개</span>
+                      </div>
+                    </div>
+                  ))}
               </div>
 
-              <h2>유형별 각주 개수</h2>
-
-              <div className="mm-barbox">
-                <CultureBar label="문화 이해" width="100%" count="3개" />
-                <CultureBar label="커뮤니케이션" width="66%" count="2개" />
-                <CultureBar label="업무 스타일" width="33%" count="1개" />
-              </div>
-
-              {CULTURE.map((item) => (
-                <div className="mm-culture-note" key={`${item.cat}-${item.q}`}>
-                  <span className="mm-chip">{item.cat}</span>
-                  <div className="mm-culture-quote">"{item.q}"</div>
-                  <div className="mm-culture-description">{item.d}</div>
+              {culturalNotes.length === 0 ? (
+                <div className="mm-culture-note">
+                  감지된 문화 각주가 없습니다. (다국어 인식이 아직 불안정할 수 있어요)
                 </div>
-              ))}
+              ) : (
+                culturalNotes.map((item, idx) => (
+                  <div className="mm-culture-note" key={idx}>
+                    <span className="mm-chip">{item.note_type || "문화 각주"}</span>
+                    <div className="mm-culture-description">{item.speaker_intent}</div>
+                  </div>
+                ))
+              )}
             </section>
           )}
         </div>
       </main>
-    </div>
-  );
-}
-
-type CultureBarProps = {
-  label: string;
-  width: string;
-  count: string;
-};
-
-function CultureBar({ label, width, count }: CultureBarProps) {
-  return (
-    <div className="mm-bar">
-      <span>{label}</span>
-      <div className="mm-track">
-        <div className="mm-fill" style={{ width }} />
-      </div>
-      <span className="mm-bar-count">{count}</span>
     </div>
   );
 }
