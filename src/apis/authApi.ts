@@ -1,17 +1,9 @@
 import api from "./axiosInstance";
 
-interface AuthUserSummary {
-  id: string;
-  email: string;
-  nickname: string;
-}
-
 interface LoginResponse {
+  user_id: number;
   access_token: string;
   refresh_token: string;
-  token_type: "Bearer";
-  expires_in: number;
-  user: AuthUserSummary;
 }
 
 interface SignupResponse {
