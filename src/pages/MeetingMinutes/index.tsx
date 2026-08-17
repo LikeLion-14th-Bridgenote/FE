@@ -771,6 +771,10 @@ export default function MeetingMinutes() {
   const [culturalNotes, setCulturalNotes] = useState<RealCulturalNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const participantCount = useMemo(() => {
+    if (meeting?.participants?.length) return meeting.participants.length;
+    return new Set(utterances.map((u) => u.speaker_id).filter(Boolean)).size;
+  }, [meeting, utterances]);
 
   useEffect(() => {
     if (!id || !accessToken) return;
@@ -931,7 +935,7 @@ export default function MeetingMinutes() {
                       ? new Date(meeting.started_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })
                       : "-"}
                   </span>
-                  <span>참가자 {meeting.participants?.length ?? 0}명</span>
+                  <span>참가자 {participantCount}명</span>
                 </div>
               </div>
 
