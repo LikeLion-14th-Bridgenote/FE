@@ -54,7 +54,7 @@ export default function Dashboard() {
           userApi.getProfile(),
           meetingApi.getList(),
         ]);
-        setNickname(profileRes.data.nickname);
+        setNickname(profileRes.data.name);
         setMeetings(meetingsRes.data);
       } catch (e) {
         // 실패해도 화면은 최대한 보여줌
