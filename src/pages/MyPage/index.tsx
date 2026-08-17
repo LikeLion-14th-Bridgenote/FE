@@ -74,7 +74,7 @@ export default function MyPage() {
         const { data } = await userApi.getProfile();
         if (isCancelled) return;
 
-        setNickname(data.nickname);
+        setNickname(data.name);
         setEmail(data.email);
         setLanguage(data.language);
         setCulture(data.culture);
@@ -118,7 +118,7 @@ export default function MyPage() {
               };
 
       const { data } = await userApi.updateProfile(payload);
-      setNickname(data.nickname);
+      setNickname(data.name);
       setEmail(data.email);
       setLanguage(data.language);
       setCulture(data.culture);

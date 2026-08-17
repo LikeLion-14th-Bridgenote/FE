@@ -1,7 +1,7 @@
 export interface UserProfile {
   id: string;
   email: string;
-  nickname: string;
+  name: string;
   language: string;
   culture: string;
   job: string;
@@ -11,5 +11,5 @@ export interface UserProfile {
 }
 
 export type UserProfileUpdate = Partial<
-  Pick<UserProfile, "nickname" | "language" | "culture" | "job" | "organization">
+  Pick<UserProfile, "name" | "language" | "culture" | "job" | "organization">
 >;

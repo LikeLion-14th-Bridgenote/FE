@@ -175,6 +175,7 @@ export default function MeetingRoom() {
   };
 
   const isHost = hostId === profileId;
+  console.log("hostId:", hostId, "profileId:", profileId, "isHost:", isHost);
   const notedLines = subtitles.filter((l) => l.note);
 
   if (loading) {

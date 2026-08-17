@@ -785,7 +785,9 @@ export default function MeetingMinutes() {
         ]);
         setMeeting(meetingRes.data);
         setUtterances(meetingRes.data.utterances || utterRes.data.utterances || []);
-        setCulturalNotes(notesRes.data.cultural_notes || notesRes.data || []);
+
+        const notesData = notesRes.data.cultural_notes || notesRes.data;
+        setCulturalNotes(Array.isArray(notesData) ? notesData : []);
       } catch (e) {
         setError("회의록을 불러오는 중 오류가 발생했습니다.");
       } finally {

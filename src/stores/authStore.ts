@@ -1,5 +1,15 @@
 import { create } from "zustand";
 
+function decodeJwtSub(token: string): string | null {
+  try {
+    const payload = token.split(".")[1];
+    const decoded = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
+    return decoded.sub ?? null;
+  } catch {
+    return null;
+  }
+}
+
 interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
@@ -16,8 +26,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   refreshToken: null,
   profileId: null,
   isAuthenticated: false,
-  setTokens: (access, refresh) =>
-    set({ accessToken: access, refreshToken: refresh, isAuthenticated: true }),
+  setTokens: (access, refresh) => {
+    const sub = decodeJwtSub(access);
+    set({ accessToken: access, refreshToken: refresh, isAuthenticated: true, profileId: sub });
+  },
   setProfileId: (id) => set({ profileId: id }),
   logout: () =>
     set({ accessToken: null, refreshToken: null, profileId: null, isAuthenticated: false }),
