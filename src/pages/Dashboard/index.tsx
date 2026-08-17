@@ -131,12 +131,12 @@ export default function Dashboard() {
             <div className="bg-white rounded-2xl shadow-sm p-6">
               <p className="text-sm font-semibold text-gray-900 mb-1">링크로 회의 참여</p>
               <p className="text-xs text-gray-400 mb-4">전달받은 회의 링크 입력하기</p>
-              <form onSubmit={handleJoin} className="flex gap-2">
+              <form onSubmit={handleJoin} className="flex flex-col sm:flex-row gap-2">
                 <input
                   value={inviteLink}
                   onChange={(e) => setInviteLink(e.target.value)}
                   placeholder="회의 링크 입력"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-primary"
+                  className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-primary"
                 />
                 <button
                   type="submit"
