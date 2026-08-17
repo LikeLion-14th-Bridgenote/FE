@@ -9,6 +9,7 @@ import { authApi } from "../../apis/authApi";
 // 회원가입 폼에 모국어/문화권/직업/기관까지 포함되면서, /onboarding 페이지 제거됨
 // 직업/문화권 value는 코드로 고정, 화면 표시만 언어별로 전환됨
 // profileId는 authStore.setTokens 안에서 JWT의 sub 값으로 자동 세팅됨
+// TODO: 비밀번호 규칙(최소 길이/특수문자 등) 백엔드 확인 후 프론트 유효성 검사 추가 필요
 
 type Mode = "login" | "signup";
 
@@ -39,6 +40,14 @@ const CULTURE_OPTIONS = [
   { code: "US", ko: "미국", en: "United States", vi: "Hoa Kỳ" },
 ] as const;
 
+function getErrorStatus(err: unknown): number | undefined {
+  if (typeof err === "object" && err !== null && "response" in err) {
+    const res = (err as { response?: { status?: number } }).response;
+    return res?.status;
+  }
+  return undefined;
+}
+
 export default function Auth() {
   const { lang } = useLangStore();
   const navigate = useNavigate();
@@ -48,6 +57,7 @@ export default function Auth() {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPw, setLoginPw] = useState("");
   const [loginError, setLoginError] = useState(false);
+  const [loginErrorMessage, setLoginErrorMessage] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
 
   const [nickname, setNickname] = useState("");
@@ -63,13 +73,22 @@ export default function Auth() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError(false);
+    setLoginErrorMessage("");
     setLoginLoading(true);
     try {
       const res = await authApi.login(loginEmail, loginPw);
       setTokens(res.data.access_token, res.data.refresh_token);
       navigate("/dashboard");
-    } catch (e) {
+    } catch (err) {
       setLoginError(true);
+      const status = getErrorStatus(err);
+      if (status === 401) {
+        setLoginErrorMessage("이메일 또는 비밀번호가 올바르지 않습니다.");
+      } else if (status === 500) {
+        setLoginErrorMessage("서버에 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+      } else {
+        setLoginErrorMessage(t("auth.retryPassword", lang));
+      }
     } finally {
       setLoginLoading(false);
     }
@@ -92,8 +111,17 @@ export default function Auth() {
       const loginRes = await authApi.login(signupEmail, signupPw);
       setTokens(loginRes.data.access_token, loginRes.data.refresh_token);
       navigate("/dashboard");
-    } catch (e) {
-      setSignupError("회원가입 중 오류가 발생했습니다. 입력 정보를 확인해주세요.");
+    } catch (err) {
+      const status = getErrorStatus(err);
+      if (status === 409) {
+        setSignupError("이미 가입된 이메일입니다. 로그인을 이용해주세요.");
+      } else if (status === 400) {
+        setSignupError("입력 정보를 다시 확인해주세요. (이메일 형식, 비밀번호 조건 등)");
+      } else if (status === 500) {
+        setSignupError("서버에 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+      } else {
+        setSignupError("회원가입 중 오류가 발생했습니다. 입력 정보를 확인해주세요.");
+      }
     } finally {
       setSignupLoading(false);
     }
@@ -134,7 +162,7 @@ export default function Auth() {
                 }`}
               />
               {loginError && (
-                <p className="text-xs text-accent mt-1.5">{t("auth.retryPassword", lang)}</p>
+                <p className="text-xs text-accent mt-1.5">{loginErrorMessage}</p>
               )}
             </div>
 
@@ -190,6 +218,9 @@ export default function Auth() {
                 onChange={(e) => setSignupPw(e.target.value)}
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-primary"
               />
+              <p className="text-[11px] text-gray-400 mt-1">
+                영문 대/소문자, 숫자, 특수문자를 조합해 8자 이상 입력해주세요.
+              </p>
             </div>
 
             <div className="border-t border-gray-100 pt-4">
@@ -208,7 +239,7 @@ export default function Auth() {
                   <select
                     value={language}
                     onChange={(e) => setLanguage(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-primary"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-primary"
                   >
                     <option value="">{t("auth.select", lang)}</option>
                     <option value="ko">한국어</option>
@@ -224,7 +255,7 @@ export default function Auth() {
                   <select
                     value={job}
                     onChange={(e) => setJob(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-primary"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-primary"
                   >
                     <option value="">{t("auth.select", lang)}</option>
                     {JOB_OPTIONS.map((opt) => (
@@ -245,7 +276,7 @@ export default function Auth() {
                   <select
                     value={culture}
                     onChange={(e) => setCulture(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-primary"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-primary"
                   >
                     <option value="">{t("auth.select", lang)}</option>
                     {CULTURE_OPTIONS.map((opt) => (
@@ -263,7 +294,7 @@ export default function Auth() {
                   <input
                     value={org}
                     onChange={(e) => setOrg(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-primary"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-primary"
                   />
                 </div>
               </div>
