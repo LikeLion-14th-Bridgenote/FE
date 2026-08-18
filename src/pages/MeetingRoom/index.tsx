@@ -82,6 +82,7 @@ export default function MeetingRoom() {
   const [wsConnected, setWsConnected] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const manualSpeakerRef = useRef(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   const pushToast = (text: string) => {
     const tid = `${Date.now()}-${Math.random()}`;
@@ -137,6 +138,11 @@ export default function MeetingRoom() {
     const host = participants.find((p) => p.profile_id === hostId);
     if (host) setCurrentSpeakerIndex(host.speaker_index);
   }, [participants, hostId, currentSpeakerIndex]);
+
+  // 새 메시지 오면 자동으로 아래로 스크롤
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [subtitles]);
 
   const { sendSpeakerSwitch, sendAudioChunk } = useMeetingSocket({
     meetingId: id,
@@ -381,7 +387,7 @@ export default function MeetingRoom() {
           })}
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 lg:px-8 py-6 lg:py-8 pt-16 lg:pt-8 flex flex-col gap-3 max-w-2xl mx-auto w-full">
+        <div className="flex-1 overflow-y-auto px-4 lg:px-8 py-6 lg:py-8 pt-16 lg:pt-8 flex flex-col gap-3 w-full">
           {subtitles.length === 0 && (
             <p className="text-sm text-gray-400 text-center mt-10">아직 발화 기록이 없습니다. 발화자 전환 후 대화를 시작해보세요.</p>
           )}
@@ -411,6 +417,7 @@ export default function MeetingRoom() {
               </div>
             );
           })}
+          <div ref={chatEndRef} />
         </div>
 
         <aside className="hidden lg:flex flex-shrink-0 flex-col gap-3 w-80 px-5 py-6 border-l border-gray-100 bg-white/40 overflow-y-auto">
