@@ -114,6 +114,7 @@ export function useMeetingSocket({
 
     ws.onclose = (event) => {
       if (event.code === 4401) console.error("WebSocket 인증 실패");
+      if (event.code === 4403) console.error("참가(join) 미완료로 연결 거부됨");
       if (event.code === 4404) console.error("회의를 찾을 수 없음");
       if (event.code === 4409) console.error("이미 종료된 회의");
       onClose?.(event.code);
