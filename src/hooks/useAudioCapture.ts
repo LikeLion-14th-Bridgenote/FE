@@ -11,15 +11,24 @@ export function useAudioCapture({ enabled, onChunk, chunkIntervalMs = 250 }: Use
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const seqRef = useRef(0);
+  const onChunkRef = useRef(onChunk);
+
+  // 매 렌더링마다 최신 콜백을 ref에 저장 (useEffect 재실행 방지용)
+  useEffect(() => {
+    onChunkRef.current = onChunk;
+  }, [onChunk]);
 
   useEffect(() => {
     if (!enabled) {
       mediaRecorderRef.current?.stop();
+      mediaRecorderRef.current = null;
       streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
       return;
     }
 
     let cancelled = false;
+    seqRef.current = 0;
 
     const start = async () => {
       try {
@@ -37,7 +46,7 @@ export function useAudioCapture({ enabled, onChunk, chunkIntervalMs = 250 }: Use
           if (event.data.size === 0) return;
           const base64 = await blobToBase64(event.data);
           seqRef.current += 1;
-          onChunk(base64, seqRef.current);
+          onChunkRef.current(base64, seqRef.current);
         };
 
         recorder.start(chunkIntervalMs);
@@ -51,9 +60,11 @@ export function useAudioCapture({ enabled, onChunk, chunkIntervalMs = 250 }: Use
     return () => {
       cancelled = true;
       mediaRecorderRef.current?.stop();
+      mediaRecorderRef.current = null;
       streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
     };
-  }, [enabled, chunkIntervalMs, onChunk]);
+  }, [enabled, chunkIntervalMs]); // onChunk 제거! enabled가 바뀔 때만 recorder 재생성
 
   return { error };
 }
