@@ -929,12 +929,14 @@ export default function MeetingMinutes() {
                 <h1>{meeting.title}</h1>
 
                 <div className="mm-meta">
-                  <span>📅 {meeting.started_at ? new Date(meeting.started_at).toLocaleDateString("ko-KR") : "-"}</span>
-                  <span>
-                    {meeting.started_at
-                      ? new Date(meeting.started_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })
-                      : "-"}
-                  </span>
+                  {meeting.started_at ? (
+                    <>
+                      <span>📅 {new Date(meeting.started_at).toLocaleDateString("ko-KR")}</span>
+                      <span>{new Date(meeting.started_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}</span>
+                    </>
+                  ) : (
+                    <span className="text-gray-400">📅 회의가 아직 시작되지 않았습니다</span>
+                  )}
                   <span>참가자 {participantCount}명</span>
                 </div>
               </div>
