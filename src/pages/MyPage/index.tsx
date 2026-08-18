@@ -2,16 +2,18 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { authApi } from "../../apis/authApi";
 import { userApi } from "../../apis/userApi";
+import { t } from "../../i18n";
 import { useAuthStore } from "../../stores/authStore";
+import { useLangStore } from "../../stores/langStore";
 
 type Section = "profile" | "language" | "job" | "account";
 type ConfirmModal = "logout" | "withdraw" | null;
 
-const SECTIONS: { id: Section; label: string }[] = [
-  { id: "profile", label: "프로필" },
-  { id: "language", label: "언어 설정" },
-  { id: "job", label: "직무 설정" },
-  { id: "account", label: "계정 관리" },
+const SECTIONS: { id: Section; labelKey: string }[] = [
+  { id: "profile", labelKey: "mypage.section.profile" },
+  { id: "language", labelKey: "mypage.section.language" },
+  { id: "job", labelKey: "mypage.section.job" },
+  { id: "account", labelKey: "mypage.section.account" },
 ];
 
 const LANGUAGE_OPTIONS = [
@@ -21,17 +23,17 @@ const LANGUAGE_OPTIONS = [
 ];
 
 const CULTURE_OPTIONS = [
-  { value: "KR", label: "대한민국" },
-  { value: "VN", label: "베트남" },
-  { value: "US", label: "미국" },
+  { value: "KR", labelKey: "mypage.option.culture.kr" },
+  { value: "VN", labelKey: "mypage.option.culture.vn" },
+  { value: "US", labelKey: "mypage.option.culture.us" },
 ];
 
 const JOB_OPTIONS = [
-  { value: "pm", label: "기획 / PM" },
-  { value: "dev_it", label: "개발 / IT" },
-  { value: "design", label: "디자인" },
-  { value: "data", label: "데이터 분석" },
-  { value: "marketing", label: "마케팅 / 광고" },
+  { value: "pm", labelKey: "mypage.option.job.pm" },
+  { value: "dev_it", labelKey: "mypage.option.job.dev" },
+  { value: "design", labelKey: "mypage.option.job.design" },
+  { value: "data", labelKey: "mypage.option.job.data" },
+  { value: "marketing", labelKey: "mypage.option.job.marketing" },
 ];
 
 const inputClass =
@@ -41,6 +43,7 @@ const IS_DEV_PREVIEW = import.meta.env.VITE_SKIP_AUTH === "true";
 
 export default function MyPage() {
   const navigate = useNavigate();
+  const { lang, setLang } = useLangStore();
   const accessToken = useAuthStore((state) => state.accessToken);
   const clearAuth = useAuthStore((state) => state.logout);
   const [section, setSection] = useState<Section>("profile");
@@ -53,7 +56,7 @@ export default function MyPage() {
   const [nickname, setNickname] = useState(IS_DEV_PREVIEW ? "김재웅" : "");
   const [email, setEmail] = useState(IS_DEV_PREVIEW ? "jaewoong@bridgenote.team" : "");
   const [organization, setOrganization] = useState(IS_DEV_PREVIEW ? "LikeLion Bridgenote" : "");
-  const [language, setLanguage] = useState("ko");
+  const [language, setLanguage] = useState(lang);
   const [culture, setCulture] = useState("KR");
   const [jobRole, setJobRole] = useState("pm");
 
@@ -76,13 +79,15 @@ export default function MyPage() {
 
         setNickname(data.name);
         setEmail(data.email);
-        setLanguage(data.language);
+        const profileLanguage = data.language === "en" || data.language === "vi" ? data.language : "ko";
+        setLanguage(profileLanguage);
+        setLang(profileLanguage);
         setCulture(data.culture);
         setJobRole(data.job);
         setOrganization(data.organization ?? "");
       } catch {
         if (!isCancelled) {
-          setToast("프로필 정보를 불러오지 못했어요.");
+          setToast(t("mypage.toast.loadError", useLangStore.getState().lang));
           window.setTimeout(() => setToast(""), 1800);
         }
       } finally {
@@ -95,12 +100,18 @@ export default function MyPage() {
     return () => {
       isCancelled = true;
     };
-  }, [accessToken]);
+  }, [accessToken, setLang]);
+
+  const handleLanguageChange = (nextLanguage: string) => {
+    const nextLang = nextLanguage === "en" || nextLanguage === "vi" ? nextLanguage : "ko";
+    setLanguage(nextLang);
+    setLang(nextLang);
+  };
 
   const handleSave = async () => {
     if (!accessToken) {
       setIsEditingProfile(false);
-      showToast("변경사항을 미리보기에 반영했어요.");
+      showToast(t("mypage.toast.previewSaved", lang));
       return;
     }
 
@@ -120,14 +131,16 @@ export default function MyPage() {
       const { data } = await userApi.updateProfile(payload);
       setNickname(data.name);
       setEmail(data.email);
-      setLanguage(data.language);
+      const savedLanguage = data.language === "en" || data.language === "vi" ? data.language : "ko";
+      setLanguage(savedLanguage);
+      setLang(savedLanguage);
       setCulture(data.culture);
       setJobRole(data.job);
       setOrganization(data.organization ?? "");
       setIsEditingProfile(false);
-      showToast("변경사항을 저장했어요.");
+      showToast(t("mypage.toast.saved", lang));
     } catch {
-      showToast("변경사항을 저장하지 못했어요.");
+      showToast(t("mypage.toast.saveError", lang));
     } finally {
       setIsSaving(false);
     }
@@ -153,7 +166,7 @@ export default function MyPage() {
     if (modal === "withdraw") {
       if (!accessToken) {
         setModal(null);
-        showToast("개발 미리보기에서는 회원 탈퇴를 실행하지 않아요.");
+        showToast(t("mypage.toast.previewWithdraw", lang));
         return;
       }
 
@@ -165,7 +178,7 @@ export default function MyPage() {
         navigate("/");
       } catch {
         setModal(null);
-        showToast("회원 탈퇴를 처리하지 못했어요.");
+        showToast(t("mypage.toast.withdrawError", lang));
       } finally {
         setIsSaving(false);
       }
@@ -177,10 +190,10 @@ export default function MyPage() {
       <div className="mx-auto grid max-w-6xl overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm md:min-h-[640px] md:grid-cols-[190px_minmax(0,1fr)]">
         <aside className="flex flex-col border-b border-gray-100 p-3 md:border-b-0 md:border-r md:p-5">
           <h1 className="hidden px-3 pb-6 pt-2 text-base font-bold text-gray-900 underline decoration-primary decoration-2 underline-offset-8 md:block">
-            마이페이지
+            {t("nav.mypage", lang)}
           </h1>
 
-          <nav className="grid grid-cols-2 gap-1.5 md:grid-cols-1" aria-label="마이페이지 메뉴">
+          <nav className="grid grid-cols-2 gap-1.5 md:grid-cols-1" aria-label={t("mypage.menuLabel", lang)}>
             {SECTIONS.map((item) => (
               <button
                 key={item.id}
@@ -193,7 +206,7 @@ export default function MyPage() {
                     : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
                 }`}
               >
-                {item.label}
+                {t(item.labelKey, lang)}
               </button>
             ))}
           </nav>
@@ -203,7 +216,7 @@ export default function MyPage() {
             onClick={() => setModal("logout")}
             className="mt-auto hidden w-full border-t border-gray-100 px-4 pt-5 text-left text-sm text-gray-500 transition-colors hover:text-gray-800 md:block"
           >
-            로그아웃
+            {t("mypage.logout", lang)}
           </button>
         </aside>
 
@@ -212,15 +225,15 @@ export default function MyPage() {
           aria-busy={isLoading || isSaving}
         >
           {isLoading && (
-            <p className="mb-5 text-sm text-gray-400">프로필 정보를 불러오는 중이에요.</p>
+            <p className="mb-5 text-sm text-gray-400">{t("mypage.loading", lang)}</p>
           )}
           {section === "profile" && (
             <section className="flex min-h-full flex-col">
               <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row">
                 <div>
-                  <h2 className="text-2xl font-bold tracking-tight text-gray-900">프로필</h2>
+                  <h2 className="text-2xl font-bold tracking-tight text-gray-900">{t("mypage.profile.title", lang)}</h2>
                   <p className="mt-1.5 text-sm text-gray-400">
-                    회의에서 사용할 기본 정보를 관리해요.
+                    {t("mypage.profile.description", lang)}
                   </p>
                 </div>
                 <button
@@ -228,7 +241,7 @@ export default function MyPage() {
                   onClick={() => setIsEditingProfile((current) => !current)}
                   className="rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-bold text-gray-700 transition-colors hover:border-primary hover:text-primary"
                 >
-                  {isEditingProfile ? "편집 취소" : "프로필 편집"}
+                  {isEditingProfile ? t("mypage.profile.cancelEdit", lang) : t("mypage.profile.edit", lang)}
                 </button>
               </div>
 
@@ -245,10 +258,10 @@ export default function MyPage() {
                 </div>
               </div>
 
-              <h3 className="mb-4 text-sm font-bold text-gray-800">기본 정보</h3>
+              <h3 className="mb-4 text-sm font-bold text-gray-800">{t("mypage.profile.basicInfo", lang)}</h3>
               <div className="grid max-w-2xl gap-5 sm:grid-cols-2">
                 <label className="text-xs font-bold text-gray-700">
-                  닉네임
+                  {t("mypage.profile.nickname", lang)}
                   <input
                     value={nickname}
                     onChange={(event) => setNickname(event.target.value)}
@@ -258,10 +271,10 @@ export default function MyPage() {
                 </label>
 
                 <label className="text-xs font-bold text-gray-700">
-                  가입 이메일
+                  {t("mypage.account.email", lang)}
                   <input value={email} disabled className={`${inputClass} mt-2`} />
                   <span className="mt-2 block font-medium text-gray-400">
-                    가입 이메일은 변경할 수 없어요.
+                    {t("mypage.profile.emailReadonly", lang)}
                   </span>
                 </label>
               </div>
@@ -273,7 +286,7 @@ export default function MyPage() {
                     onClick={() => setIsEditingProfile(false)}
                     className="rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-bold text-gray-600"
                   >
-                    취소
+                    {t("mypage.cancel", lang)}
                   </button>
                   <button
                     type="button"
@@ -281,7 +294,7 @@ export default function MyPage() {
                     disabled={isSaving}
                     className="rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
                   >
-                    {isSaving ? "저장 중..." : "변경사항 저장"}
+                    {isSaving ? t("mypage.saving", lang) : t("mypage.save", lang)}
                   </button>
                 </div>
               )}
@@ -291,46 +304,46 @@ export default function MyPage() {
           {section === "language" && (
             <section className="flex min-h-full flex-col">
               <div className="mb-12">
-                <h2 className="text-2xl font-bold tracking-tight text-gray-900">언어 설정</h2>
+                <h2 className="text-2xl font-bold tracking-tight text-gray-900">{t("mypage.language.title", lang)}</h2>
                 <p className="mt-1.5 text-sm text-gray-400">
-                  변경된 설정은 다음 회의부터 기본값으로 적용돼요.
+                  {t("mypage.language.description", lang)}
                 </p>
               </div>
 
               <div className="max-w-xl space-y-7">
                 <SelectField
                   id="native-language"
-                  label="모국어 설정"
-                  description="실시간 자막 번역과 회의록 표시 언어의 기본값으로 사용돼요."
+                  label={t("mypage.language.native", lang)}
+                  description={t("mypage.language.nativeDescription", lang)}
                   value={language}
                   options={LANGUAGE_OPTIONS}
-                  onChange={setLanguage}
+                  onChange={handleLanguageChange}
                 />
               </div>
 
-              <SaveActions onSave={handleSave} isSaving={isSaving} />
+              <SaveActions onSave={handleSave} isSaving={isSaving} lang={lang} />
             </section>
           )}
 
           {section === "job" && (
             <section className="flex min-h-full flex-col">
               <div className="mb-12">
-                <h2 className="text-2xl font-bold tracking-tight text-gray-900">직무 설정</h2>
+                <h2 className="text-2xl font-bold tracking-tight text-gray-900">{t("mypage.job.title", lang)}</h2>
                 <p className="mt-1.5 text-sm text-gray-400">
-                  문화 각주와 직무별 회의록에 사용할 정보를 설정해요.
+                  {t("mypage.job.description", lang)}
                 </p>
               </div>
 
               <div className="grid w-full max-w-md gap-8">
                 <SelectField
                   id="culture"
-                  label="주 활동 문화권"
+                  label={t("mypage.job.culture", lang)}
                   value={culture}
-                  options={CULTURE_OPTIONS}
+                  options={CULTURE_OPTIONS.map((option) => ({ value: option.value, label: t(option.labelKey, lang) }))}
                   onChange={setCulture}
                 />
                 <label className="block text-xs font-bold text-gray-700">
-                  소속 조직
+                  {t("mypage.job.organization", lang)}
                   <input
                     value={organization}
                     onChange={(event) => setOrganization(event.target.value)}
@@ -339,39 +352,39 @@ export default function MyPage() {
                 </label>
                 <SelectField
                   id="job-role"
-                  label="직무"
+                  label={t("mypage.job.role", lang)}
                   value={jobRole}
-                  options={JOB_OPTIONS}
+                  options={JOB_OPTIONS.map((option) => ({ value: option.value, label: t(option.labelKey, lang) }))}
                   onChange={setJobRole}
                 />
               </div>
 
-              <SaveActions onSave={handleSave} isSaving={isSaving} />
+              <SaveActions onSave={handleSave} isSaving={isSaving} lang={lang} />
             </section>
           )}
 
           {section === "account" && (
             <section className="flex min-h-full flex-col">
               <div className="mb-8">
-                <h2 className="text-2xl font-bold tracking-tight text-gray-900">계정 관리</h2>
+                <h2 className="text-2xl font-bold tracking-tight text-gray-900">{t("mypage.account.title", lang)}</h2>
                 <p className="mt-1.5 text-sm text-gray-400">
-                  로그인 정보와 계정 상태를 관리해요.
+                  {t("mypage.account.description", lang)}
                 </p>
               </div>
 
               <div className="border-t border-gray-100">
-                <AccountRow title="가입 이메일" description={email} />
+                <AccountRow title={t("mypage.account.email", lang)} description={email} />
 
                 <AccountRow
-                  title="로그아웃"
-                  description="이 기기에서 현재 계정의 연결을 해제해요."
-                  actionLabel="로그아웃"
+                  title={t("mypage.logout", lang)}
+                  description={t("mypage.account.logoutDescription", lang)}
+                  actionLabel={t("mypage.logout", lang)}
                   onAction={() => setModal("logout")}
                 />
                 <AccountRow
-                  title="회원 탈퇴"
-                  description="계정과 관련 데이터를 삭제해요."
-                  actionLabel="회원 탈퇴"
+                  title={t("mypage.withdraw", lang)}
+                  description={t("mypage.account.withdrawDescription", lang)}
+                  actionLabel={t("mypage.withdraw", lang)}
                   danger
                   onAction={() => setModal("withdraw")}
                 />
@@ -399,12 +412,12 @@ export default function MyPage() {
         >
           <div className="w-full max-w-md rounded-2xl bg-white p-7 shadow-xl">
             <h2 id="confirm-modal-title" className="text-xl font-bold text-gray-900">
-              {modal === "logout" ? "로그아웃 하시겠어요?" : "정말 탈퇴하시겠어요?"}
+              {modal === "logout" ? t("mypage.modal.logoutTitle", lang) : t("mypage.modal.withdrawTitle", lang)}
             </h2>
             <p className="mt-2 text-sm leading-6 text-gray-400">
               {modal === "logout"
-                ? "이 기기에서 로그인 정보가 해제됩니다."
-                : "프로필과 저장된 회의 정보가 삭제될 수 있으며, 이 작업은 되돌릴 수 없습니다."}
+                ? t("mypage.modal.logoutDescription", lang)
+                : t("mypage.modal.withdrawDescription", lang)}
             </p>
             <div className="mt-7 flex justify-end gap-2">
               <button
@@ -412,7 +425,7 @@ export default function MyPage() {
                 onClick={() => setModal(null)}
                 className="rounded-lg px-4 py-2.5 text-sm font-bold text-gray-500"
               >
-                취소
+                {t("mypage.cancel", lang)}
               </button>
               <button
                 type="button"
@@ -422,7 +435,11 @@ export default function MyPage() {
                   modal === "logout" ? "bg-primary" : "bg-accent"
                 } disabled:cursor-wait disabled:opacity-60`}
               >
-                {isSaving ? "처리 중..." : modal === "logout" ? "로그아웃" : "회원 탈퇴"}
+                {isSaving
+                  ? t("mypage.processing", lang)
+                  : modal === "logout"
+                    ? t("mypage.logout", lang)
+                    : t("mypage.withdraw", lang)}
               </button>
             </div>
           </div>
@@ -465,9 +482,11 @@ function SelectField({ id, label, description, value, options, onChange }: Selec
 function SaveActions({
   onSave,
   isSaving,
+  lang,
 }: {
   onSave: () => void | Promise<void>;
   isSaving: boolean;
+  lang: "ko" | "en" | "vi";
 }) {
   return (
     <div className="mt-auto flex justify-end pt-12">
@@ -477,7 +496,7 @@ function SaveActions({
         disabled={isSaving}
         className="min-w-36 rounded-lg bg-primary px-5 py-3 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
       >
-        {isSaving ? "저장 중..." : "변경사항 저장"}
+        {isSaving ? t("mypage.saving", lang) : t("mypage.save", lang)}
       </button>
     </div>
   );
