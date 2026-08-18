@@ -782,12 +782,20 @@ export default function MeetingMinutes() {
       try {
         setLoading(true);
         setError("");
-        const [meetingRes, utterRes, notesRes] = await Promise.all([
+        const [meetingRes, utterRes, notesRes, listRes] = await Promise.all([
           meetingApi.get(id),
           meetingApi.getUtterances(id),
           meetingApi.getCulturalNotes(id),
+          meetingApi.getList(),
         ]);
-        setMeeting(meetingRes.data);
+
+        const listItem = (listRes.data as any[]).find((m) => m.id === id);
+
+        setMeeting({
+          ...meetingRes.data,
+          started_at: meetingRes.data.started_at ?? listItem?.started_at ?? null,
+          ended_at: meetingRes.data.ended_at ?? listItem?.ended_at ?? null,
+        });
         setUtterances(meetingRes.data.utterances || utterRes.data.utterances || []);
 
         const notesData = notesRes.data.cultural_notes || notesRes.data;
