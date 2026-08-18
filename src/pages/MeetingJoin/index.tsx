@@ -4,49 +4,50 @@ import { meetingApi } from "../../apis/meetingApi";
 import ConsentGate from "../../components/meeting/ConsentGate";
 
 // 담당: 주연
-// 참가 흐름: URL의 ?code= 쿼리로 자동 참가 시도 → 동의
-// 예: /meetings/{id}/join?code=IQWLG9
+// 참가 흐름: URL의 ?code= 쿼리 → 동의(consent, ConsentGate 내부에서 처리) → 참가(join) → 회의장
+// 백엔드 확정: consent → join → WS 연결 순서 필수 (2026.08.17 확인)
 
-type Step = "joining" | "consent" | "error";
+type Step = "loading" | "consent" | "joining" | "error";
 
 export default function MeetingJoin() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [step, setStep] = useState<Step>("joining");
+  const [step, setStep] = useState<Step>("loading");
   const [error, setError] = useState("");
-  const [meetingTitle, setMeetingTitle] = useState("");
 
   const inviteCode = searchParams.get("code");
 
   useEffect(() => {
-    const doJoin = async () => {
-      if (!id || !inviteCode) {
-        setError("유효하지 않은 초대 링크입니다. 코드가 포함된 링크로 다시 접속해주세요.");
-        setStep("error");
-        return;
-      }
-      try {
-        const res = await meetingApi.join(id, inviteCode);
-        setMeetingTitle(res.data.profile?.nickname ? "회의" : "회의"); // TODO: 회의 제목은 별도 조회 필요
-        setStep("consent");
-      } catch (e) {
-        setError("초대 코드가 올바르지 않거나, 회의를 찾을 수 없습니다.");
-        setStep("error");
-      }
-    };
-    doJoin();
+    if (!id || !inviteCode) {
+      setError("유효하지 않은 초대 링크입니다. 코드가 포함된 링크로 다시 접속해주세요.");
+      setStep("error");
+      return;
+    }
+    setStep("consent");
   }, [id, inviteCode]);
 
+  // ConsentGate 내부에서 consent API 호출 및 성공 처리까지 끝낸 뒤 이 콜백이 실행됨
+  const handleAgreeAndJoin = async () => {
+    if (!id || !inviteCode) return;
+    setStep("joining");
+    try {
+      await meetingApi.join(id, inviteCode);
+      navigate(`/meetings/${id}`);
+    } catch (e) {
+      setError("참가 처리 중 오류가 발생했습니다. 초대 코드를 다시 확인해주세요.");
+      setStep("error");
+    }
+  };
+
   if (step === "consent" && id) {
-    const meetingId = id;
     return (
       <ConsentGate
-        meetingId={meetingId}
-        meetingTitle={meetingTitle || "참여 회의"}
+        meetingId={id}
+        meetingTitle="참여 회의"
         meetingDate={new Date().toLocaleString("ko-KR")}
         isCreator={false}
-        onAgree={() => navigate(`/meetings/${meetingId}`)}
+        onAgree={handleAgreeAndJoin}
       />
     );
   }
@@ -54,8 +55,10 @@ export default function MeetingJoin() {
   return (
     <div className="min-h-screen bg-[#EDECE6] flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-sm p-8 text-center">
-        {step === "joining" && (
-          <p className="text-sm text-gray-500">회의 참가 확인 중...</p>
+        {(step === "loading" || step === "joining") && (
+          <p className="text-sm text-gray-500">
+            {step === "joining" ? "회의 참가 처리 중..." : "회의 정보를 확인하는 중..."}
+          </p>
         )}
         {step === "error" && (
           <>

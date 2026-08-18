@@ -257,6 +257,14 @@ export default function MeetingRoom() {
     );
   }
 
+  if (wsClosedCode === 4403) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <p className="text-sm text-accent">회의 참가 절차가 완료되지 않았습니다. 다시 입장해주세요.</p>
+      </div>
+    );
+  }
+
   if (wsClosedCode === 4409) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">

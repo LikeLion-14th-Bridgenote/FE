@@ -5,7 +5,8 @@ import ConsentGate from "../../components/meeting/ConsentGate";
 import { meetingApi } from "../../apis/meetingApi";
 
 // 담당: 주연
-// 단계: form(정보 입력) → created(링크 발급) → consent(동의) → 회의장 이동
+// 단계: form(정보 입력) → created(링크 발급) → consent(동의, ConsentGate 내부 처리) → join → 회의장 이동
+// 백엔드 확정: 호스트도 consent → join 호출 필수 (2026.08.17 확인)
 
 type Step = "form" | "created" | "consent";
 
@@ -20,8 +21,11 @@ export default function MeetingCreate() {
   const [description, setDescription] = useState("");
   const [expectedCount, setExpectedCount] = useState("");
   const [inviteUrl, setInviteUrl] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
   const [meetingId, setMeetingId] = useState("");
   const [copied, setCopied] = useState(false);
+  const [joining, setJoining] = useState(false);
+  const [joinError, setJoinError] = useState("");
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,10 +36,11 @@ export default function MeetingCreate() {
         expected_count: expectedCount ? Number(expectedCount) : undefined,
       });
       setInviteUrl(res.data.invite_url);
+      setInviteCode(res.data.invite_code);
       setMeetingId(res.data.id);
       setStep("created");
     } catch (e) {
-      // TODO: 에러 처리
+      // TODO: 회의 생성 실패 에러 처리
     }
   };
 
@@ -45,15 +50,34 @@ export default function MeetingCreate() {
     setTimeout(() => setCopied(false), 1500);
   };
 
+  // ConsentGate 내부에서 consent API 호출 및 성공 처리까지 끝낸 뒤 이 콜백이 실행됨
+  const handleAgreeAndJoin = async () => {
+    setJoining(true);
+    setJoinError("");
+    try {
+      await meetingApi.join(meetingId, inviteCode);
+      navigate(`/meetings/${meetingId}`);
+    } catch (e) {
+      setJoinError("회의 참가 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
+    } finally {
+      setJoining(false);
+    }
+  };
+
   if (step === "consent") {
     return (
-      <ConsentGate
-        meetingId={meetingId}
-        meetingTitle={title}
-        meetingDate={now.toLocaleString("ko-KR")}
-        isCreator
-        onAgree={() => navigate(`/meetings/${meetingId}`)}
-      />
+      <div>
+        <ConsentGate
+          meetingId={meetingId}
+          meetingTitle={title}
+          meetingDate={now.toLocaleString("ko-KR")}
+          isCreator
+          onAgree={handleAgreeAndJoin}
+        />
+        {joinError && (
+          <p className="text-center text-xs text-accent mt-4 px-4">{joinError}</p>
+        )}
+      </div>
     );
   }
 
@@ -126,9 +150,10 @@ export default function MeetingCreate() {
 
             <button
               onClick={() => setStep("consent")}
-              className="w-full py-3 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 transition-opacity"
+              disabled={joining}
+              className="w-full py-3 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
             >
-              다음: 데이터 처리 동의
+              {joining ? "입장 중..." : "다음: 데이터 처리 동의"}
             </button>
           </>
         )}

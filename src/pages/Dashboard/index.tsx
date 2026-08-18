@@ -82,8 +82,18 @@ export default function Dashboard() {
 
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
-    const id = inviteLink.trim().split("/").pop();
-    if (id) navigate(`/meetings/${id}/join`);
+    try {
+      const url = new URL(inviteLink.trim());
+      const id = url.pathname.split("/").filter(Boolean).pop();
+      const code = url.searchParams.get("code");
+      if (id && code) {
+        navigate(`/meetings/${id}/join?code=${code}`);
+      } else {
+        // TODO: 유효하지 않은 링크 에러 처리
+      }
+    } catch (e) {
+      // URL 형식이 아닌 경우 (예: 그냥 id만 붙여넣은 경우) 등 예외 처리
+    }
   };
 
   return (
