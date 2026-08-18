@@ -56,6 +56,7 @@ export default function Auth() {
 
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPw, setLoginPw] = useState("");
+  const [showLoginPw, setShowLoginPw] = useState(false);
   const [loginError, setLoginError] = useState(false);
   const [loginErrorMessage, setLoginErrorMessage] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
@@ -153,14 +154,25 @@ export default function Auth() {
               <label className="text-sm font-semibold text-gray-800 block mb-1.5">
                 {t("auth.password", lang)}
               </label>
-              <input
-                type="password"
-                value={loginPw}
-                onChange={(e) => setLoginPw(e.target.value)}
-                className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none ${
-                  loginError ? "border-accent" : "border-gray-300 focus:border-primary"
-                }`}
-              />
+              <div className="relative">
+                <input
+                  type={showLoginPw ? "text" : "password"}
+                  value={loginPw}
+                  onChange={(e) => setLoginPw(e.target.value)}
+                  className={`w-full px-4 py-2.5 pr-12 border rounded-lg text-sm focus:outline-none ${
+                    loginError ? "border-accent" : "border-gray-300 focus:border-primary"
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowLoginPw((current) => !current)}
+                  className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-gray-400 transition-colors hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  aria-label={t(showLoginPw ? "auth.hidePassword" : "auth.showPassword", lang)}
+                  aria-pressed={showLoginPw}
+                >
+                  {showLoginPw ? <EyeOffIcon /> : <EyeIcon />}
+                </button>
+              </div>
               {loginError && (
                 <p className="text-xs text-accent mt-1.5">{loginErrorMessage}</p>
               )}
@@ -330,5 +342,22 @@ export default function Auth() {
         </div>
       </div>
     </div>
+  );
+}
+
+function EyeIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+      <circle cx="12" cy="12" r="2.75" />
+    </svg>
+  );
+}
+
+function EyeOffIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
+      <path strokeLinecap="round" strokeLinejoin="round" d="m3 3 18 18M10.6 6.1A10.7 10.7 0 0 1 12 6c6 0 9.5 6 9.5 6a16 16 0 0 1-2.2 2.9M6.2 6.3C3.8 8 2.5 12 2.5 12s3.5 6 9.5 6a10 10 0 0 0 4-.8M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+    </svg>
   );
 }
