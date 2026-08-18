@@ -81,7 +81,7 @@ export default function MeetingRoom() {
   const [wsClosedCode, setWsClosedCode] = useState<number | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const manualSpeakerRef = useRef(false); // 사용자가 직접 발화자를 바꾼 적 있는지
+  const manualSpeakerRef = useRef(false);
 
   const pushToast = (text: string) => {
     const tid = `${Date.now()}-${Math.random()}`;
@@ -89,7 +89,6 @@ export default function MeetingRoom() {
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== tid)), 3000);
   };
 
-  // REST로 회의 상세 새로 불러오기 (참가자/시작시각 보정용, 재사용)
   const refreshMeeting = async () => {
     if (!id) return;
     try {
@@ -105,7 +104,6 @@ export default function MeetingRoom() {
     }
   };
 
-  // 최초 로딩
   useEffect(() => {
     if (!id) return;
     const init = async () => {
@@ -116,7 +114,6 @@ export default function MeetingRoom() {
     init();
   }, [id]);
 
-  // WS 이벤트가 유실될 수 있어서, 시작 시각/참가자 목록을 못 받은 동안 주기적으로 REST 보정
   useEffect(() => {
     if (!id || meetingStatus === "ended") return;
     const needsRefresh = !meetingStartedAt || participants.length === 0;
@@ -125,7 +122,6 @@ export default function MeetingRoom() {
     return () => clearInterval(interval);
   }, [id, meetingStartedAt, participants.length, meetingStatus]);
 
-  // 서버가 준 시작 시각 기준으로 경과 시간 계산 (모두 동일하게 보임)
   useEffect(() => {
     if (!meetingStartedAt) return;
     const startTime = new Date(meetingStartedAt).getTime();
@@ -135,7 +131,6 @@ export default function MeetingRoom() {
     return () => clearInterval(timer);
   }, [meetingStartedAt]);
 
-  // 참가자 목록이 채워지면, 아직 직접 발화자를 고르지 않은 경우 기본 마이크를 호스트에게 배정
   useEffect(() => {
     if (manualSpeakerRef.current || currentSpeakerIndex !== null) return;
     if (!hostId || participants.length === 0) return;
@@ -243,7 +238,7 @@ export default function MeetingRoom() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="h-screen bg-white flex items-center justify-center">
         <p className="text-sm text-gray-400">회의 정보를 불러오는 중...</p>
       </div>
     );
@@ -251,7 +246,7 @@ export default function MeetingRoom() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="h-screen bg-white flex items-center justify-center">
         <p className="text-sm text-accent">{error}</p>
       </div>
     );
@@ -259,7 +254,7 @@ export default function MeetingRoom() {
 
   if (wsClosedCode === 4403) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="h-screen bg-white flex items-center justify-center">
         <p className="text-sm text-accent">회의 참가 절차가 완료되지 않았습니다. 다시 입장해주세요.</p>
       </div>
     );
@@ -267,7 +262,7 @@ export default function MeetingRoom() {
 
   if (wsClosedCode === 4409) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="h-screen bg-white flex items-center justify-center">
         <p className="text-sm text-accent">이미 종료된 회의입니다.</p>
       </div>
     );
@@ -275,7 +270,7 @@ export default function MeetingRoom() {
 
   if (wsClosedCode === 4401 || wsClosedCode === 4404) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="h-screen bg-white flex items-center justify-center">
         <p className="text-sm text-accent">
           {wsClosedCode === 4401 ? "인증에 실패했습니다. 다시 로그인해주세요." : "회의를 찾을 수 없습니다."}
         </p>
@@ -284,7 +279,7 @@ export default function MeetingRoom() {
   }
 
   return (
-    <div className="min-h-screen bg-[#EDECE6] flex flex-col">
+    <div className="h-screen bg-[#EDECE6] flex flex-col overflow-hidden">
       <div className="fixed top-4 right-4 z-50 flex flex-col gap-2">
         {toasts.map((toast) => (
           <div key={toast.id} className="bg-gray-900 text-white text-xs px-4 py-2.5 rounded-lg shadow-lg">
@@ -293,7 +288,7 @@ export default function MeetingRoom() {
         ))}
       </div>
 
-      <header className="flex items-center justify-between px-6 h-16 bg-white border-b border-gray-100">
+      <header className="flex-shrink-0 flex items-center justify-between px-6 h-16 bg-white border-b border-gray-100">
         <div>
           <div className="flex items-center gap-2">
             <p className="text-sm font-semibold">회의 진행 중</p>
@@ -336,7 +331,7 @@ export default function MeetingRoom() {
       </header>
 
       <div className="flex flex-1 min-h-0">
-        <div className="hidden lg:flex flex-col items-center gap-5 w-20 py-6 bg-white/60 border-r border-gray-100">
+        <div className="hidden lg:flex flex-shrink-0 flex-col items-center gap-5 w-20 py-6 bg-white/60 border-r border-gray-100 overflow-y-auto">
           <span className="text-[10px] text-gray-400 text-center leading-tight mb-1">
             아바타 클릭 시<br />발화자 전환
           </span>
@@ -418,7 +413,7 @@ export default function MeetingRoom() {
           })}
         </div>
 
-        <aside className="hidden lg:flex flex-col gap-3 w-80 px-5 py-6 border-l border-gray-100 bg-white/40 overflow-y-auto">
+        <aside className="hidden lg:flex flex-shrink-0 flex-col gap-3 w-80 px-5 py-6 border-l border-gray-100 bg-white/40 overflow-y-auto">
           <p className="text-sm font-semibold text-gray-800">문화 경고</p>
           {notedLines.length === 0 && <p className="text-xs text-gray-400">아직 감지된 문화 오해가 없습니다.</p>}
           {notedLines.map((line) => (
