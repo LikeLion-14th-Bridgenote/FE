@@ -216,9 +216,7 @@ export default function MeetingRoom() {
     setWsConnected(true);
   }, [id, accessToken]);
 
-  const isCurrentSpeaker =
-    currentSpeakerIndex !== null &&
-    participants.find((p) => p.speaker_index === currentSpeakerIndex)?.profile_id === profileId;
+  const isCurrentSpeaker = currentSpeakerIndex !== null;
 
   const { error: micError } = useAudioCapture({
     enabled: isCurrentSpeaker && meetingStatus !== "ended",
