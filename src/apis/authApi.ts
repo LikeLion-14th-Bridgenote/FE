@@ -9,7 +9,7 @@ interface LoginResponse {
 interface SignupResponse {
   id: string;
   email: string;
-  nickname: string;
+  name: string;
   language: string | null;
   culture: string | null;
   job: string | null;
@@ -26,7 +26,7 @@ export const authApi = {
   signup: (data: {
     email: string;
     password: string;
-    nickname: string;
+    name: string;
     language: string;
     culture: string;
     job: string;

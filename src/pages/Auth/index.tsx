@@ -103,7 +103,7 @@ export default function Auth() {
       await authApi.signup({
         email: signupEmail,
         password: signupPw,
-        nickname,
+        name: nickname,
         language,
         culture,
         job,

@@ -54,16 +54,17 @@
 | 페이지 | FE 담당 | 비고 |
 |---|---|---|
 | Home, Auth (초안) | 주연 | 이후 재웅이 마이페이지·다국어(Navbar 포함)까지 확장 | BE 페어: 조수민 |
+| MyPage | 재웅 | BE 페어: 조수민 |
 | Dashboard, MeetingCreate, MeetingJoin, MeetingRoom | 주연 | BE 페어: 전진수 |
 | MeetingMinutes, MeetingArchive | 동균 | BE 페어: 원종윤 (AI minutes) |
 | i18n, Navbar, 공용 컴포넌트 | 주연 + 재웅 |
 
 ## Environment
 
-    VITE_API_BASE_URL=<BE 서버 주소, 팀 채팅 공지 참고>
-    VITE_WS_URL=<WS 주소>/ws
+    VITE_API_BASE_URL=https://1-201-116-247.sslip.io
+    VITE_WS_URL=wss://1-201-116-247.sslip.io/ws
 
-현재 BE는 trycloudflare 임시 터널을 사용 중이라 서버 재시작 시 주소가 바뀐다. 최신 주소는 팀 채팅에서 확인. 정식 서버(가비아) 전환 후 고정 예정.
+BE는 Gabia 클라우드에 정식 배포되어 24시간 상시 운영, 주소 고정.
 
 ## API/실시간 연동 핵심 규칙
 
@@ -82,48 +83,9 @@
 
 브라우저: http://localhost:5173
 
-## Available Scripts
-
-    npm run dev        개발 서버
-    npm run build       프로덕션 빌드 (tsc -b && vite build)
-    npm run lint         ESLint
-
-## Git Workflow
-
-기본 브랜치: develop (팀원 작업 기준) · main (배포/제출용, push 제한)
-
-    git checkout develop
-    git pull origin develop
-    git checkout -b feature/<기능>-<이름>
-    git add .
-    git commit -m "[ADD] 기능 설명"
-    git push -u origin feature/<기능>-<이름>
-
-develop → main 머지는 팀장(주연)만 진행한다.
-
-## PR 규칙
-
-- PR 대상 브랜치는 항상 develop (팀원은 main에 직접 접근 불가, branch protection으로 제한됨)
-- 민감 파일(.env, API 키)은 반드시 .gitignore에 추가 (이미 포함)
-- 작업 전 PR을 먼저 올리고 팀 확인 후 머지 (직접 머지 지양)
-
-## Commit Convention
-
-| 태그 | 의미 |
-|---|---|
-| [INIT] | 초기 세팅 |
-| [ADD] | 기능 추가 |
-| [FIX] | 버그 수정 |
-| [REFACTOR] | 리팩토링 |
-| [HOTFIX] | 긴급 수정 |
-
-## 공용 컴포넌트 원칙
-
-페이지마다 버튼·인풋·카드를 새로 만들지 않는다. components/common에 팔레트(청록 #2C7B98, 코랄 #E2795F, 배경 #EDECE6)·폰트(YuhanKimberlyPureunsoop)가 적용된 기본 컴포넌트를 먼저 만들고 각 페이지는 이걸 가져다 쓴다.
-
 ## 관련 문서
 
 - 기능 명세서 (노션)
-- 기획서 (노션)
+- 기획서: https://app.notion.com/p/hufsglobal/BN-3af82a1df32180438fcbcf8353dc4a8f
 - 백엔드: bridgenote-BE 레포
 - AI 서버: bridgenote-AI 레포
