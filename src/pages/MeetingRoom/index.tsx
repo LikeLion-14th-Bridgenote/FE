@@ -149,7 +149,19 @@ export default function MeetingRoom() {
     accessToken,
     onCaption: (msg) => {
       if (!msg.is_final) return;
-      setSubtitles((prev) => [...prev, { id: msg.sentence_id, speakerIndex: msg.speaker_index, main: msg.source_text }]);
+      setSubtitles((prev) => {
+        const existingIndex = prev.findIndex((line) => line.id === msg.sentence_id);
+        if (existingIndex !== -1) {
+          const updated = [...prev];
+          updated[existingIndex] = {
+            ...updated[existingIndex],
+            main: msg.source_text,
+            speakerIndex: msg.speaker_index,
+          };
+          return updated;
+        }
+        return [...prev, { id: msg.sentence_id, speakerIndex: msg.speaker_index, main: msg.source_text }];
+      });
     },
     onTranslation: (msg) => {
       setSubtitles((prev) => prev.map((line) => (line.id === msg.sentence_id ? { ...line, sub: msg.text } : line)));
