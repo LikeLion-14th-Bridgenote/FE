@@ -743,7 +743,7 @@ interface RealMinutesItem {
   job_role: string;
   decisions: string[];
   discussions: string[];
-  action_items: string[];
+  action_items: (string | { task: string; owner: string; deadline: string })[];
 }
 
 interface RealCulturalNote {
@@ -851,10 +851,16 @@ export default function MeetingMinutes() {
     () => Array.from(new Set(currentLangMinutes.flatMap((m) => m.discussions || []))),
     [currentLangMinutes]
   );
-  const actionItems = useMemo(
-    () => Array.from(new Set(currentLangMinutes.flatMap((m) => m.action_items || []))),
-    [currentLangMinutes]
-  );
+  const actionItems = useMemo(() => {
+    const all = currentLangMinutes.flatMap((m) => m.action_items || []);
+    const seen = new Set<string>();
+    return all.filter((item) => {
+      const key = typeof item === "string" ? item : `${item.task}-${item.owner}-${item.deadline}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [currentLangMinutes]);
 
   const roleMinutes = useMemo(
     () => minutesAll.find((m) => m.language === lang && m.job_role === role),
@@ -1106,13 +1112,19 @@ export default function MeetingMinutes() {
                 {actionItems.length === 0 ? (
                   <div style={{ padding: "20px" }}>{ui.none}</div>
                 ) : (
-                  actionItems.map((item) => (
-                    <div className="mm-table-row" key={item}>
-                      <div>{item}</div>
-                      <div className="mm-owner">-</div>
-                      <div className="mm-due">{ui.none}</div>
-                    </div>
-                  ))
+                  actionItems.map((item, idx) => {
+                    const isObject = typeof item === "object" && item !== null;
+                    const task = isObject ? item.task ?? "-" : item;
+                    const owner = isObject ? item.owner ?? "-" : "-";
+                    const deadline = isObject ? item.deadline ?? ui.none : ui.none;
+                    return (
+                      <div className="mm-table-row" key={idx}>
+                        <div>{task}</div>
+                        <div className="mm-owner">{owner}</div>
+                        <div className="mm-due">{deadline}</div>
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </section>
