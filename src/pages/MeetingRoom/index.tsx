@@ -237,8 +237,6 @@ export default function MeetingRoom() {
     manualSpeakerRef.current = true;
     setCurrentSpeakerIndex(speakerIndex);
     sendSpeakerSwitch(speakerIndex);
-    // 발화자 전환 시 MediaRecorder 재시작 → 새 webm 헤더 생성
-    setTimeout(() => restartAudio(), 100);
   };
 
   const handleEndMeeting = async () => {
