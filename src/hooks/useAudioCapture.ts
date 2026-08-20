@@ -4,10 +4,9 @@ interface UseAudioCaptureOptions {
   enabled: boolean;
   onChunk: (base64Data: string, seq: number) => void;
   chunkIntervalMs?: number;
-  speakerKey?: number | null;
 }
 
-export function useAudioCapture({ enabled, onChunk, chunkIntervalMs = 250, speakerKey }: UseAudioCaptureOptions) {
+export function useAudioCapture({ enabled, onChunk, chunkIntervalMs = 250 }: UseAudioCaptureOptions) {
   const [error, setError] = useState("");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -65,7 +64,7 @@ export function useAudioCapture({ enabled, onChunk, chunkIntervalMs = 250, speak
       streamRef.current?.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     };
-  }, [enabled, chunkIntervalMs, speakerKey]); // speakerKey가 바뀌면 recorder 재시작(새 webm 헤더 생성)
+  }, [enabled, chunkIntervalMs]); // onChunk 제거! enabled가 바뀔 때만 recorder 재생성
 
   return { error };
 }
