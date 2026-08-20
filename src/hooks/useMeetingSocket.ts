@@ -47,7 +47,8 @@ type ServerMessage =
   | TranslationMessage
   | WarningMessage
   | MeetingStatusMessage
-  | ParticipantEventMessage;
+  | ParticipantEventMessage
+  | { type: "audio_restart" };
 
 interface UseMeetingSocketOptions {
   meetingId: string | undefined;
@@ -59,6 +60,7 @@ interface UseMeetingSocketOptions {
   onMeetingEnded?: (endedAt: string) => void;
   onParticipantJoined?: (msg: ParticipantEventMessage) => void;
   onParticipantLeft?: (msg: ParticipantEventMessage) => void;
+  onAudioRestart?: () => void;
   onClose?: (code: number) => void;
 }
 
@@ -72,9 +74,12 @@ export function useMeetingSocket({
   onMeetingEnded,
   onParticipantJoined,
   onParticipantLeft,
+  onAudioRestart,
   onClose,
 }: UseMeetingSocketOptions) {
   const wsRef = useRef<WebSocket | null>(null);
+  const onAudioRestartRef = useRef(onAudioRestart);
+  onAudioRestartRef.current = onAudioRestart;
 
   useEffect(() => {
     if (!meetingId || !accessToken) return;
@@ -89,25 +94,28 @@ export function useMeetingSocket({
       console.log("[WS 수신]", data.type, data);
       switch (data.type) {
         case "caption":
-          onCaption?.(data);
+          onCaption?.(data as CaptionMessage);
           break;
         case "translation":
-          onTranslation?.(data);
+          onTranslation?.(data as TranslationMessage);
           break;
         case "warning":
-          onWarning?.(data);
+          onWarning?.(data as WarningMessage);
           break;
         case "meeting_started":
-          onMeetingStarted?.(data.started_at ?? "");
+          onMeetingStarted?.((data as MeetingStatusMessage).started_at ?? "");
           break;
         case "meeting_ended":
-          onMeetingEnded?.(data.ended_at ?? "");
+          onMeetingEnded?.((data as MeetingStatusMessage).ended_at ?? "");
           break;
         case "participant_joined":
-          onParticipantJoined?.(data);
+          onParticipantJoined?.(data as ParticipantEventMessage);
           break;
         case "participant_left":
-          onParticipantLeft?.(data);
+          onParticipantLeft?.(data as ParticipantEventMessage);
+          break;
+        case "audio_restart":
+          onAudioRestartRef.current?.();
           break;
       }
     };

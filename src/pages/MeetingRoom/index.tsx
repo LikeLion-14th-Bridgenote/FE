@@ -90,6 +90,8 @@ export default function MeetingRoom() {
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== tid)), 3000);
   };
 
+  const restartAudioRef = useRef<() => void>(() => {});
+
   const refreshMeeting = async () => {
     if (!id) return;
     try {
@@ -210,6 +212,9 @@ export default function MeetingRoom() {
       setWsClosedCode(code);
       setWsConnected(false);
     },
+    onAudioRestart: () => {
+      restartAudioRef.current();
+    },
   });
 
   useEffect(() => {
@@ -218,17 +223,22 @@ export default function MeetingRoom() {
 
   const isCurrentSpeaker = currentSpeakerIndex !== null;
 
-  const { error: micError } = useAudioCapture({
+  const { error: micError, restart: restartAudio } = useAudioCapture({
     enabled: isCurrentSpeaker && meetingStatus !== "ended",
     onChunk: (base64Data, seq) => {
       if (currentSpeakerIndex !== null) sendAudioChunk(currentSpeakerIndex, seq, base64Data);
     },
   });
 
+  // ref에 최신 restart 함수를 저장 (useMeetingSocket의 onAudioRestart에서 사용)
+  restartAudioRef.current = restartAudio;
+
   const handleSpeakerSwitch = (speakerIndex: number) => {
     manualSpeakerRef.current = true;
     setCurrentSpeakerIndex(speakerIndex);
     sendSpeakerSwitch(speakerIndex);
+    // 발화자 전환 시 MediaRecorder 재시작 → 새 webm 헤더 생성
+    setTimeout(() => restartAudio(), 100);
   };
 
   const handleEndMeeting = async () => {

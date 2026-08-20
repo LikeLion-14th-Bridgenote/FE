@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface UseAudioCaptureOptions {
   enabled: boolean;
@@ -12,11 +12,35 @@ export function useAudioCapture({ enabled, onChunk, chunkIntervalMs = 250 }: Use
   const streamRef = useRef<MediaStream | null>(null);
   const seqRef = useRef(0);
   const onChunkRef = useRef(onChunk);
+  const chunkIntervalRef = useRef(chunkIntervalMs);
 
-  // 매 렌더링마다 최신 콜백을 ref에 저장 (useEffect 재실행 방지용)
   useEffect(() => {
     onChunkRef.current = onChunk;
   }, [onChunk]);
+
+  useEffect(() => {
+    chunkIntervalRef.current = chunkIntervalMs;
+  }, [chunkIntervalMs]);
+
+  const startRecorder = useCallback((stream: MediaStream) => {
+    // 기존 recorder 정지
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
+
+    const recorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
+    mediaRecorderRef.current = recorder;
+    seqRef.current = 0;
+
+    recorder.ondataavailable = async (event) => {
+      if (event.data.size === 0) return;
+      const base64 = await blobToBase64(event.data);
+      seqRef.current += 1;
+      onChunkRef.current(base64, seqRef.current);
+    };
+
+    recorder.start(chunkIntervalRef.current);
+  }, []);
 
   useEffect(() => {
     if (!enabled) {
@@ -38,18 +62,7 @@ export function useAudioCapture({ enabled, onChunk, chunkIntervalMs = 250 }: Use
           return;
         }
         streamRef.current = stream;
-
-        const recorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
-        mediaRecorderRef.current = recorder;
-
-        recorder.ondataavailable = async (event) => {
-          if (event.data.size === 0) return;
-          const base64 = await blobToBase64(event.data);
-          seqRef.current += 1;
-          onChunkRef.current(base64, seqRef.current);
-        };
-
-        recorder.start(chunkIntervalMs);
+        startRecorder(stream);
       } catch (e) {
         setError("마이크 권한이 필요합니다.");
       }
@@ -64,9 +77,18 @@ export function useAudioCapture({ enabled, onChunk, chunkIntervalMs = 250 }: Use
       streamRef.current?.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     };
-  }, [enabled, chunkIntervalMs]); // onChunk 제거! enabled가 바뀔 때만 recorder 재생성
+  }, [enabled, chunkIntervalMs, startRecorder]);
 
-  return { error };
+  // 외부에서 호출: MediaRecorder만 재시작 (마이크 스트림 유지, 새 webm 헤더 생성)
+  const restart = useCallback(() => {
+    const stream = streamRef.current;
+    if (!stream || stream.getTracks().every((t) => t.readyState === "ended")) {
+      return;
+    }
+    startRecorder(stream);
+  }, [startRecorder]);
+
+  return { error, restart };
 }
 
 function blobToBase64(blob: Blob): Promise<string> {
