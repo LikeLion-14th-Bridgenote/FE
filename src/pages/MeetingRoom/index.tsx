@@ -220,6 +220,7 @@ export default function MeetingRoom() {
 
   const { error: micError } = useAudioCapture({
     enabled: isCurrentSpeaker && meetingStatus !== "ended",
+    speakerKey: currentSpeakerIndex,
     onChunk: (base64Data, seq) => {
       if (currentSpeakerIndex !== null) sendAudioChunk(currentSpeakerIndex, seq, base64Data);
     },
